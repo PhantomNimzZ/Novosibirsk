@@ -8,17 +8,16 @@ import LongDistance from './pages/LongDistance.jsx';
 import Commuter from './pages/Commuter.jsx';
 import BookNow from './pages/BookNow.jsx';
 import CommuterCity from './pages/CommuterCity.jsx';
-import AdminDashboard from "./pages/AdminDashboard";
-//import AdminBookingForm from "./pages/AdminBookingForm";
-import Bookings from "./pages/Bookings";
-import ProtectedRoute from "./components/ProtectedRoute"; // if you're protecting routes
-import AdminLogin from "./pages/AdminLogin"; // import this at the top
-
+import Admin from "./pages/Admin.jsx"; // ✅ updated
+import Bookings from "./pages/Bookings.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
+import AdminLogin from "./pages/AdminLogin.jsx"; 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<StartPage />} />
         <Route path="/select" element={<RouteType />} />
         <Route path="/long-distance" element={<LongDistance />} />
@@ -27,14 +26,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/booking" element={<App />} />
         <Route path="/commuter/:cityId" element={<CommuterCity />} />
         <Route path="/admin-login" element={<AdminLogin />} />
-        
+
+        {/* Protected Admin Route */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin" element={<Admin />} />
         </Route>
 
+        {/* Fallback */}
         <Route path="*" element={<StartPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
-
 );

@@ -1,35 +1,43 @@
+// src/components/admin/AdminSidebar.jsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const AdminSidebar = () => {
-  const navigate = useNavigate();
-
   return (
-    <div style={{
-      width: "250px",
-      backgroundColor: "#2c3e50",
-      color: "white",
-      padding: "1rem",
-      display: "flex",
-      flexDirection: "column",
-    }}>
-      <h3 style={{ marginBottom: "2rem" }}>🚆 PRASA Admin</h3>
-
-      <button onClick={() => navigate("/admin")} style={navButtonStyle}>Dashboard</button>
-      <button onClick={() => navigate("/admin/book")} style={navButtonStyle}>New Booking</button>
-      <button onClick={() => navigate("/bookings")} style={navButtonStyle}>Manage Bookings</button>
-    </div>
+    <aside
+      style={{
+        width: "220px",
+        backgroundColor: "#2c3e50",
+        color: "white",
+        padding: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+      }}
+    >
+      <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Admin Menu</h2>
+      
+      <nav style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <Link to="/admin" style={{ color: "white", textDecoration: "none" }}>
+          Dashboard
+        </Link>
+        <Link
+          to="/admin/manage-bookings"
+          style={{ color: "white", textDecoration: "none" }}
+        >
+          Manage Bookings
+        </Link>
+        <Link 
+          to="/admin/create-booking" 
+          className="block p-2 hover:bg-gray-700"
+          style={{ color: "white", textDecoration: "none" }}
+        >
+          Create Booking
+        </Link>
+        {/* Add more links later (Users, Reports, Settings, etc.) */}
+      </nav>
+    </aside>
   );
-};
-
-const navButtonStyle = {
-  background: "transparent",
-  border: "none",
-  color: "white",
-  margin: "0.5rem 0",
-  textAlign: "left",
-  cursor: "pointer",
-  fontSize: "1rem",
 };
 
 export default AdminSidebar;

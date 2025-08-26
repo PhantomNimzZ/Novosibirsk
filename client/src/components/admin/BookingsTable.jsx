@@ -1,10 +1,53 @@
 import React, { useState } from "react";
 import "./BookingsTable.css";
 
-const BookingsTable = ({ bookings }) => {
+const BookingsTable = ({ bookings, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  // Extract unique statuses from bookings
+  const uniqueStatuses = ["All", ...new Set(bookings.map(b => b.status))];
+
+  // Sorting & filtering
+  const sortedBookings = React.useMemo(() => {
+    let filteredBookings = [...bookings];
+
+    // Filter by search
+    if (searchTerm) {
+      filteredBookings = filteredBookings.filter((booking) =>
+        Object.values(booking).some((value) =>
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== "All") {
+      filteredBookings = filteredBookings.filter(
+        (booking) => booking.status.toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    // Sort
+    if (sortConfig.key) {
+      filteredBookings.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        if (sortConfig.key === "date") {
+          aValue = new Date(aValue);
+          bValue = new Date(bValue);
+        }
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filteredBookings;
+  }, [bookings, searchTerm, statusFilter, sortConfig]);
 
   const handleSort = (key) => {
     let direction = "asc";
@@ -14,31 +57,7 @@ const BookingsTable = ({ bookings }) => {
     setSortConfig({ key, direction });
   };
 
-  const sortedBookings = [...bookings].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    const aValue = a[sortConfig.key].toString().toLowerCase();
-    const bValue = b[sortConfig.key].toString().toLowerCase();
-
-    if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  // Filter bookings
-  const filteredBookings = sortedBookings.filter((booking) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      booking.user.toLowerCase().includes(term) ||
-      booking.train.toLowerCase().includes(term) ||
-      booking.date.toLowerCase().includes(term);
-
-    const matchesStatus =
-      statusFilter === "" || booking.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  const getSortIndicator = (key) => {
+  const getSortArrow = (key) => {
     if (sortConfig.key === key) {
       return sortConfig.direction === "asc" ? " ▲" : " ▼";
     }
@@ -49,52 +68,58 @@ const BookingsTable = ({ bookings }) => {
     <div className="bookings-table">
       <h2>Bookings</h2>
 
-      {/* Filter controls */}
-      <div className="filters">
+      {/* Search + Filter */}
+      <div className="table-controls">
         <input
           type="text"
-          placeholder="Search by user, train, or date..."
+          placeholder="Search bookings..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
+          className="search-bar"
         />
 
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="status-select"
+          className="status-filter"
         >
-          <option value="">All Statuses</option>
-          <option value="Confirmed">Confirmed</option>
-          <option value="Pending">Pending</option>
-          <option value="Cancelled">Cancelled</option>
+          {uniqueStatuses.map((status, idx) => (
+            <option key={idx} value={status}>
+              {status}
+            </option>
+          ))}
         </select>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th onClick={() => handleSort("user")}>User{getSortIndicator("user")}</th>
-            <th onClick={() => handleSort("train")}>Train{getSortIndicator("train")}</th>
-            <th onClick={() => handleSort("date")}>Date{getSortIndicator("date")}</th>
-            <th onClick={() => handleSort("seat")}>Seat{getSortIndicator("seat")}</th>
-            <th onClick={() => handleSort("status")}>Status{getSortIndicator("status")}</th>
+            <th onClick={() => handleSort("user")}>User{getSortArrow("user")}</th>
+            <th onClick={() => handleSort("train")}>Train{getSortArrow("train")}</th>
+            <th onClick={() => handleSort("date")}>Date{getSortArrow("date")}</th>
+            <th onClick={() => handleSort("seat")}>Seat{getSortArrow("seat")}</th>
+            <th onClick={() => handleSort("status")}>Status{getSortArrow("status")}</th>
+            <th>Actions</th> {/* NEW column header */}
           </tr>
         </thead>
         <tbody>
-          {filteredBookings.length > 0 ? (
-            filteredBookings.map((booking, index) => (
+          {sortedBookings.length > 0 ? (
+            sortedBookings.map((booking, index) => (
               <tr key={index}>
                 <td>{booking.user}</td>
                 <td>{booking.train}</td>
                 <td>{booking.date}</td>
                 <td>{booking.seat}</td>
                 <td>{booking.status}</td>
+                <td>
+                  <button onClick={() => onEdit(booking)}>Edit</button>
+                  <button onClick={() => onDelete(booking.id)}>Delete</button>
+                </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="5" style={{ textAlign: "center" }}>
+              <td colSpan="6" style={{ textAlign: "center" }}>
                 No bookings found
               </td>
             </tr>

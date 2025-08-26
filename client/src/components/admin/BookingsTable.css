@@ -73,3 +73,33 @@ th {
 th:hover {
   background-color: #f1f1f1;
 }
+
+.search-bar {
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  width: 100%;
+  max-width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.table-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.search-bar {
+  padding: 6px 10px;
+  width: 100%;
+  max-width: 250px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.status-filter {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+}

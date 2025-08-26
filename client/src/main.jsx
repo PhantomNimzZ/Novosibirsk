@@ -8,12 +8,20 @@ import LongDistance from './pages/LongDistance.jsx';
 import Commuter from './pages/Commuter.jsx';
 import BookNow from './pages/BookNow.jsx';
 import CommuterCity from './pages/CommuterCity.jsx';
-import Admin from "./pages/Admin.jsx"; // ✅ updated
-import Bookings from "./pages/Bookings.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
-import AdminLogin from "./pages/AdminLogin.jsx"; 
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminLogin from "./pages/AdminLogin";
+
+// Updated paths for admin pages
+import Dashboard from "./pages/admin/Dashboard.jsx";
+import ManageBookings from "./pages/admin/ManageBookings.jsx";
+import CreateBooking from "./pages/admin/CreateBooking.jsx";
+
+// Create root
+const root = ReactDOM.createRoot(document.getElementById("root"));
+
+root.render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
@@ -27,9 +35,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/commuter/:cityId" element={<CommuterCity />} />
         <Route path="/admin-login" element={<AdminLogin />} />
 
-        {/* Protected Admin Route */}
+        {/* Admin Routes (Protected) */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} /> {/* Admin dashboard */}
+            <Route path="create-booking" element={<CreateBooking />} /> {/* New Booking */}
+            <Route path="manage-bookings" element={<ManageBookings />} /> {/* Manage Bookings */}
+          </Route>
         </Route>
 
         {/* Fallback */}

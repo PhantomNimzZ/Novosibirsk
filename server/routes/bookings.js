@@ -1,0 +1,95 @@
+const express = require("express");
+const { PrismaClient } = require("@prisma/client");
+
+const prisma = new PrismaClient();
+const router = express.Router();
+
+// CREATE a booking
+router.post("/", async (req, res) => {
+  try {
+    const booking = await prisma.booking.create({
+      data: {
+        passengerName: req.body.passengerName,
+        email: req.body.email,
+        idNumber: req.body.idNumber,
+        trainNumber: req.body.trainNumber,
+        departure: req.body.departure,
+        destination: req.body.destination,
+        date: new Date(req.body.date),
+        time: req.body.time,
+        seat: req.body.seat,
+        price: req.body.price,
+        paymentStatus: "Pending",
+        status: "Active",
+        train: {
+          connect: { id: req.body.trainId } // Link to existing Train
+        }
+      },
+      include: { train: true } // Include train info in response
+    });
+    res.json(booking);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// READ all bookings
+router.get("/", async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      orderBy: { createdAt: "desc" }, // Order by creation date
+      include: { train: true } // Include train info
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// READ single booking
+router.get("/:id", async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { train: true } // Include train info
+    });
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPDATE booking
+router.put("/:id", async (req, res) => {
+  try {
+    const data = { ...req.body };
+    if (data.date) data.date = new Date(data.date);
+    if (data.price) data.price = parseFloat(data.price);
+
+    const booking = await prisma.booking.update({
+      where: { id: parseInt(req.params.id) },
+      data,
+      include: { train: true } // Include train info
+    });
+
+    res.json(booking);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE booking
+router.delete("/:id", async (req, res) => {
+  try {
+    await prisma.booking.delete({
+      where: { id: parseInt(req.params.id) },
+    });
+    res.json({ message: "Booking deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+module.exports = router;

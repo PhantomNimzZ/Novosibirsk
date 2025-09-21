@@ -6,12 +6,14 @@ const PORT = 3001;
 const prisma = new PrismaClient();
 
 const bookingRoutes = require("./routes/bookings");
+const trainsRoutes = require("./routes/trains");
 
 app.use(cors());
 app.use(express.json());
 
 // Mount all booking CRUD under /api/bookings
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/trains", trainsRoutes); // ✅ Mount trains
 
 // Sample API route for train search
 app.get('/api/search', (req, res) => {

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import BookingsTable from "../../components/admin/BookingsTable";
+import EditBookingModal from "../../components/admin/EditBookingModal";
+
 
 const ManageBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingBooking, setEditingBooking] = useState(null);
 
   useEffect(() => {
     fetchBookings();
@@ -23,16 +26,22 @@ const ManageBookings = () => {
 
   const deleteBooking = async (bookingId) => {
     try {
-      await fetch(`/api/admin/bookings/${bookingId}`, { method: "DELETE" });
+      await fetch(`http://localhost:3001/api/bookings/${bookingId}`, { method: "DELETE" });
       setBookings((prev) => prev.filter((b) => b.id !== bookingId));
     } catch (error) {
       console.error("Error deleting booking:", error);
     }
   };
 
+
   const editBooking = (booking) => {
-    alert(`Editing booking for ${booking.user}, Train: ${booking.train}`);
-    // 🔮 Later: open a modal form to actually update booking details
+    setEditingBooking(booking);
+  };
+
+  const handleSave = (updatedBooking) => {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === updatedBooking.id ? updatedBooking : b))
+    );
   };
 
   return (
@@ -45,6 +54,13 @@ const ManageBookings = () => {
           bookings={bookings}
           onEdit={editBooking}
           onDelete={deleteBooking}
+        />
+      )}
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          onClose={() => setEditingBooking(null)}
+          onSave={handleSave}
         />
       )}
     </div>

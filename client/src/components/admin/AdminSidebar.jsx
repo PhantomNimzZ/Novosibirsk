@@ -21,6 +21,13 @@ const AdminSidebar = () => {
         <Link to="/admin" style={{ color: "white", textDecoration: "none" }}>
           Dashboard
         </Link>
+        <Link 
+          to="/admin/create-booking" 
+          className="block p-2 hover:bg-gray-700"
+          style={{ color: "white", textDecoration: "none" }}
+        >
+          Create Booking
+        </Link>
         <Link
           to="/admin/manage-bookings"
           style={{ color: "white", textDecoration: "none" }}
@@ -28,11 +35,11 @@ const AdminSidebar = () => {
           Manage Bookings
         </Link>
         <Link 
-          to="/admin/create-booking" 
+          to="/admin/manage-trains" 
           className="block p-2 hover:bg-gray-700"
           style={{ color: "white", textDecoration: "none" }}
         >
-          Create Booking
+          Manage Trains
         </Link>
         {/* Add more links later (Users, Reports, Settings, etc.) */}
       </nav>

@@ -15,11 +15,15 @@ datasource db {
 
 
 model Train {
-  id        Int       @id @default(autoincrement())
-  name      String
-  number    String
-  bookings  Booking[] // relation back to Booking
+  id     Int     @id @default(autoincrement())
+  name   String
+  number String
+  seats  Int     @default(0)      // temporary default
+  price  Float   @default(0.0)    // temporary default
+  bookings Booking[]
 }
+
+
 
 
 model Booking {
@@ -36,10 +40,10 @@ model Booking {
   price         Float
   paymentStatus String
   status        String
-  train         Train    @relation(fields: [trainId], references: [id])
+  train         Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
   trainId       Int
 
-  createdAt     DateTime @default(now()) // ✅ new field
+  createdAt     DateTime @default(now())
 }
 
 

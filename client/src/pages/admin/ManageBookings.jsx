@@ -11,7 +11,7 @@ const ManageBookings = () => {
 
   const fetchBookings = async () => {
     try {
-      const res = await fetch("/api/admin/bookings"); // update with your API
+      const res = await fetch("http://localhost:3001/api/bookings"); // ✅ backend endpoint
       const data = await res.json();
       setBookings(data);
     } catch (error) {

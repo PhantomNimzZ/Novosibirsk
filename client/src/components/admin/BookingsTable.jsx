@@ -92,23 +92,34 @@ const BookingsTable = ({ bookings, onEdit, onDelete }) => {
       </div>
 
       <table>
-        <thead>
-          <tr>
-            <th onClick={() => handleSort("user")}>User{getSortArrow("user")}</th>
-            <th onClick={() => handleSort("train")}>Train{getSortArrow("train")}</th>
-            <th onClick={() => handleSort("date")}>Date{getSortArrow("date")}</th>
-            <th onClick={() => handleSort("seat")}>Seat{getSortArrow("seat")}</th>
-            <th onClick={() => handleSort("status")}>Status{getSortArrow("status")}</th>
-            <th>Actions</th> {/* NEW column header */}
-          </tr>
-        </thead>
+      <thead>
+        <tr>
+          <th onClick={() => handleSort("passengerName")}>
+            Passenger{getSortArrow("passengerName")}
+          </th>
+          <th onClick={() => handleSort("trainNumber")}>
+            Train{getSortArrow("trainNumber")}
+          </th>
+          <th onClick={() => handleSort("date")}>
+            Date{getSortArrow("date")}
+          </th>
+          <th onClick={() => handleSort("seat")}>
+            Seat{getSortArrow("seat")}
+          </th>
+          <th onClick={() => handleSort("status")}>
+            Status{getSortArrow("status")}
+          </th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
         <tbody>
           {sortedBookings.length > 0 ? (
             sortedBookings.map((booking, index) => (
               <tr key={index}>
-                <td>{booking.user}</td>
-                <td>{booking.train}</td>
-                <td>{booking.date}</td>
+                <td>{booking.passengerName}</td>
+                <td>{booking.trainNumber}</td>
+                <td>{new Date(booking.date).toLocaleDateString()}</td>
                 <td>{booking.seat}</td>
                 <td>{booking.status}</td>
                 <td>
@@ -125,6 +136,7 @@ const BookingsTable = ({ bookings, onEdit, onDelete }) => {
             </tr>
           )}
         </tbody>
+
       </table>
     </div>
   );

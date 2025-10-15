@@ -1,12 +1,15 @@
 const express = require('express');
 const cors = require('cors'); 
 const { PrismaClient } = require('@prisma/client');
+const verifyToken = require("./middleware/authMiddleware");
+const bookingRoutes = require("./routes/bookings");
+const trainsRoutes = require("./routes/trains");
 const app = express();
 const PORT = 3001;
 const prisma = new PrismaClient();
 
-const bookingRoutes = require("./routes/bookings");
-const trainsRoutes = require("./routes/trains");
+const jwt = require("jsonwebtoken");
+const SECRET_KEY = process.env.JWT_SECRET || "supersecretkey";
 
 app.use(cors());
 app.use(express.json());
@@ -14,6 +17,24 @@ app.use(express.json());
 // Mount all booking CRUD under /api/bookings
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/trains", trainsRoutes); // ✅ Mount trains
+//app.use("/api/admin/protected", verifyToken, adminProtectedRouter);
+
+// Protected routes example (if you have a dedicated admin area)
+app.use("/api/admin/protected", verifyToken, (req, res) => {
+  res.json({ message: "Access granted to protected admin route." });
+});
+
+app.post("/api/admin/login", (req, res) => {
+  const { email, password } = req.body;
+
+  // Example admin user for testing
+  if (email === "admin@prasa.com" && password === "password123") {
+    const token = jwt.sign({ email, role: "admin" }, SECRET_KEY, { expiresIn: "1h" });
+    return res.json({ token });
+  }
+
+  return res.status(401).json({ error: "Invalid email or password" });
+});
 
 // Sample API route for train search
 app.get('/api/search', (req, res) => {

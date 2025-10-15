@@ -1,10 +1,10 @@
 const express = require("express");
 const { PrismaClient } = require("@prisma/client");
-
+const verifyToken = require("../middleware/authMiddleware");
 const prisma = new PrismaClient();
 const router = express.Router();
 
-// CREATE a booking
+// CREATE a booking (public)
 router.post("/", async (req, res) => {
   try {
     const booking = await prisma.booking.create({
@@ -22,10 +22,10 @@ router.post("/", async (req, res) => {
         paymentStatus: "Pending",
         status: "Active",
         train: {
-          connect: { id: req.body.trainId } // Link to existing Train
-        }
+          connect: { id: req.body.trainId },
+        },
       },
-      include: { train: true } // Include train info in response
+      include: { train: true },
     });
     res.json(booking);
   } catch (error) {
@@ -34,12 +34,12 @@ router.post("/", async (req, res) => {
   }
 });
 
-// READ all bookings
-router.get("/", async (req, res) => {
+// READ all bookings (protected)
+router.get("/", verifyToken, async (req, res) => {
   try {
     const bookings = await prisma.booking.findMany({
-      orderBy: { createdAt: "desc" }, // Order by creation date
-      include: { train: true } // Include train info
+      orderBy: { createdAt: "desc" },
+      include: { train: true },
     });
     res.json(bookings);
   } catch (error) {
@@ -47,12 +47,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// READ single booking
-router.get("/:id", async (req, res) => {
+// READ single booking (protected)
+router.get("/:id", verifyToken, async (req, res) => {
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { train: true } // Include train info
+      include: { train: true },
     });
     if (!booking) return res.status(404).json({ error: "Booking not found" });
     res.json(booking);
@@ -61,8 +61,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// UPDATE booking
-router.put("/:id", async (req, res) => {
+// UPDATE booking (protected)
+router.put("/:id", verifyToken, async (req, res) => {
   try {
     const data = { ...req.body };
     if (data.date) data.date = new Date(data.date);
@@ -71,7 +71,7 @@ router.put("/:id", async (req, res) => {
     const booking = await prisma.booking.update({
       where: { id: parseInt(req.params.id) },
       data,
-      include: { train: true } // Include train info
+      include: { train: true },
     });
 
     res.json(booking);
@@ -80,8 +80,8 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE booking
-router.delete("/:id", async (req, res) => {
+// DELETE booking (protected)
+router.delete("/:id", verifyToken, async (req, res) => {
   try {
     await prisma.booking.delete({
       where: { id: parseInt(req.params.id) },

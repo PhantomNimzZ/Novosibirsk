@@ -11,7 +11,7 @@ import CommuterCity from './pages/CommuterCity.jsx';
 import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
 
 import AdminLayout from "./components/admin/AdminLayout";
-import AdminLogin from "./pages/AdminLogin";
+import AdminLogin from "./pages/admin/AdminLogin.jsx";
 
 // Updated paths for admin pages
 import Dashboard from "./pages/admin/Dashboard.jsx";

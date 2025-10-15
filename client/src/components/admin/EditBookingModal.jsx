@@ -5,7 +5,6 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     passengerName: "",
     email: "",
     idNumber: "",
-    trainNumber: "",
     departure: "",
     destination: "",
     date: "",
@@ -14,26 +13,48 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     price: "",
     paymentStatus: "",
     status: "",
+    trainId: "",
   });
 
-  // Load booking data into the form when modal opens
+  const [trains, setTrains] = useState([]);
+
+  // Load booking data into the form and fetch trains
   useEffect(() => {
     if (booking) {
       setFormData({
         passengerName: booking.passengerName || "",
         email: booking.email || "",
         idNumber: booking.idNumber || "",
-        trainNumber: booking.trainNumber || "",
         departure: booking.departure || "",
         destination: booking.destination || "",
         date: booking.date ? booking.date.split("T")[0] : "",
         time: booking.time || "",
         seat: booking.seat || "",
         price: booking.price || "",
-        paymentStatus: booking.paymentStatus || "",
-        status: booking.status || "",
+        paymentStatus: booking.paymentStatus || "Pending",
+        status: booking.status || "Active",
+        trainId: booking.trainId || "",
       });
     }
+
+    const fetchTrains = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        const res = await fetch("http://localhost:3001/api/trains", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to fetch trains");
+        const data = await res.json();
+        setTrains(data);
+      } catch (err) {
+        console.error("Error fetching trains:", err);
+      }
+    };
+
+    fetchTrains();
   }, [booking]);
 
   const handleChange = (e) => {
@@ -44,10 +65,18 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem("adminToken");
       const res = await fetch(`http://localhost:3001/api/bookings/${booking.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...formData,
+          trainId: parseInt(formData.trainId),
+          price: parseFloat(formData.price),
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to update booking");
@@ -56,6 +85,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
       onClose();
     } catch (error) {
       console.error("Error updating booking:", error);
+      alert("Failed to update booking. See console for details.");
     }
   };
 
@@ -72,6 +102,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.passengerName}
             onChange={handleChange}
             placeholder="Passenger Name"
+            required
           />
           <input
             type="email"
@@ -79,6 +110,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.email}
             onChange={handleChange}
             placeholder="Email"
+            required
           />
           <input
             type="text"
@@ -86,20 +118,37 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.idNumber}
             onChange={handleChange}
             placeholder="ID Number"
+            required
           />
-          <input
-            type="text"
-            name="trainNumber"
-            value={formData.trainNumber}
-            onChange={handleChange}
-            placeholder="Train Number"
-          />
+
+          {/* Train selection dropdown */}
+          <select
+            name="trainId"
+            value={formData.trainId}
+            onChange={(e) => {
+              const selectedTrain = trains.find(t => t.id === parseInt(e.target.value));
+              setFormData({
+                ...formData,
+                trainId: e.target.value,
+              });
+            }}
+            required
+          >
+            <option value="">Select Train</option>
+            {trains.map((train) => (
+              <option key={train.id} value={train.id}>
+                {train.name} ({train.number})
+              </option>
+            ))}
+          </select>
+
           <input
             type="text"
             name="departure"
             value={formData.departure}
             onChange={handleChange}
             placeholder="Departure"
+            required
           />
           <input
             type="text"
@@ -107,18 +156,21 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.destination}
             onChange={handleChange}
             placeholder="Destination"
+            required
           />
           <input
             type="date"
             name="date"
             value={formData.date}
             onChange={handleChange}
+            required
           />
           <input
             type="time"
             name="time"
             value={formData.time}
             onChange={handleChange}
+            required
           />
           <input
             type="text"
@@ -126,6 +178,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.seat}
             onChange={handleChange}
             placeholder="Seat"
+            required
           />
           <input
             type="number"
@@ -133,6 +186,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
             value={formData.price}
             onChange={handleChange}
             placeholder="Price"
+            required
           />
           <select
             name="paymentStatus"

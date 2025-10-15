@@ -7,7 +7,7 @@ function CreateBooking() {
     passengerName: "",
     email: "",
     idNumber: "",
-    trainId: "",       // We'll fetch available trains
+    trainId: "",
     trainNumber: "",
     departure: "",
     destination: "",
@@ -15,17 +15,24 @@ function CreateBooking() {
     time: "",
     seat: "",
     price: "",
-    paymentStatus: "Pending", // Default
-    status: "Active",         // Default
+    paymentStatus: "Pending",
+    status: "Active",
   });
 
   const [trains, setTrains] = useState([]);
 
-    // Fetch available trains for the dropdown
+  // Fetch trains for dropdown
   useEffect(() => {
     const fetchTrains = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/trains"); // Make sure endpoint exists
+        const token = localStorage.getItem("adminToken");
+        const res = await fetch("http://localhost:3001/api/trains", {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("Failed to fetch trains");
         const data = await res.json();
         setTrains(data);
       } catch (err) {
@@ -34,8 +41,6 @@ function CreateBooking() {
     };
     fetchTrains();
   }, []);
-
-
 
   const handleChange = (e) => {
     setFormData({
@@ -46,8 +51,8 @@ function CreateBooking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("adminToken");
 
-    // Convert price and trainId to correct types
     const bookingData = {
       ...formData,
       price: parseFloat(formData.price),
@@ -57,46 +62,27 @@ function CreateBooking() {
     try {
       const res = await fetch("http://localhost:3001/api/bookings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),  // send converted data
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingData),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to create booking");
-      }
-
+      if (!res.ok) throw new Error("Failed to create booking");
       const data = await res.json();
       alert(`Booking created successfully for ${data.passengerName}!`);
-      setFormData({
-        passengerName: "",
-        email: "",
-        idNumber: "",
-        trainId: "",
-        trainNumber: "",
-        departure: "",
-        destination: "",
-        date: "",
-        time: "",
-        seat: "",
-        price: "",
-        paymentStatus: "Pending",
-        status: "Active",
-      });
-      // Optionally: navigate to manage bookings page
       navigate("/admin/manage-bookings");
-
     } catch (error) {
       console.error("Error creating booking:", error);
       alert("Failed to create booking. See console for details.");
     }
   };
 
-
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">Create a Booking</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-
         <input
           type="text"
           name="passengerName"
@@ -105,7 +91,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="email"
           name="email"
@@ -114,7 +99,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="text"
           name="idNumber"
@@ -124,6 +108,7 @@ function CreateBooking() {
           required
         />
 
+        {/* Train selection dropdown */}
         <select
           name="trainId"
           value={formData.trainId}
@@ -153,7 +138,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="text"
           name="destination"
@@ -162,7 +146,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="date"
           name="date"
@@ -170,7 +153,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="time"
           name="time"
@@ -178,7 +160,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="text"
           name="seat"
@@ -187,7 +168,6 @@ function CreateBooking() {
           onChange={handleChange}
           required
         />
-
         <input
           type="number"
           name="price"

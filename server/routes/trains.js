@@ -1,21 +1,21 @@
-// server/routes/trains.js
 const express = require("express");
 const router = express.Router();
 const { PrismaClient } = require("@prisma/client");
+const verifyToken = require("../middleware/authMiddleware"); // ✅ Import middleware
 const prisma = new PrismaClient();
 
-//Get all Trains
+// PUBLIC: Get all trains
 router.get("/", async (req, res) => {
   try {
     const trains = await prisma.train.findMany();
-    res.json(trains); // ✅ Must use res.json, not res.send
+    res.json(trains);
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching trains");
   }
 });
 
-// GET single train
+// PUBLIC: Get single train
 router.get("/:id", async (req, res) => {
   const train = await prisma.train.findUnique({
     where: { id: parseInt(req.params.id) },
@@ -24,8 +24,8 @@ router.get("/:id", async (req, res) => {
   res.json(train);
 });
 
-// POST create train
-router.post("/", async (req, res) => {
+// ADMIN: Create train
+router.post("/", verifyToken, async (req, res) => {
   const { name, number, seats, price } = req.body;
   const train = await prisma.train.create({
     data: { name, number, seats, price },
@@ -33,9 +33,8 @@ router.post("/", async (req, res) => {
   res.json(train);
 });
 
-
-// PUT update train
-router.put("/:id", async (req, res) => {
+// ADMIN: Update train
+router.put("/:id", verifyToken, async (req, res) => {
   const { name, number, seats, price } = req.body;
   try {
     const train = await prisma.train.update({
@@ -48,14 +47,11 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE train
-router.delete("/:id", async (req, res) => {
+// ADMIN: Delete train
+router.delete("/:id", verifyToken, async (req, res) => {
   const trainId = parseInt(req.params.id);
   try {
-    // Delete all bookings for this train first
     await prisma.booking.deleteMany({ where: { trainId } });
-
-    // Then delete the train
     await prisma.train.delete({ where: { id: trainId } });
     res.json({ message: "Train deleted" });
   } catch (err) {
@@ -63,7 +59,5 @@ router.delete("/:id", async (req, res) => {
     res.status(404).json({ error: "Train not found or cannot delete" });
   }
 });
-
-
 
 module.exports = router;

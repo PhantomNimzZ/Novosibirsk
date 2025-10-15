@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const verifyToken = require("./middleware/authMiddleware");
 const bookingRoutes = require("./routes/bookings");
 const trainsRoutes = require("./routes/trains");
+const adminAuthRoutes = require("./routes/adminAuth");
 const app = express();
 const PORT = 3001;
 const prisma = new PrismaClient();
@@ -14,10 +15,14 @@ const SECRET_KEY = process.env.JWT_SECRET || "supersecretkey";
 app.use(cors());
 app.use(express.json());
 
+
 // Mount all booking CRUD under /api/bookings
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/trains", trainsRoutes); // ✅ Mount trains
 //app.use("/api/admin/protected", verifyToken, adminProtectedRouter);
+
+
+app.use("/api/admin", adminAuthRoutes);
 
 // Protected routes example (if you have a dedicated admin area)
 app.use("/api/admin/protected", verifyToken, (req, res) => {

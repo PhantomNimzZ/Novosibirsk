@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
-import TrainModal from "../../components/admin/TrainModal";
+import React, { useState, useEffect } from "react";
+import TrainModal from "../../components/admin/TrainModal.jsx";
 
-function ManageTrains() {
+export default function ManageTrains() {
   const [trains, setTrains] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  // Fetch all trains
+  // 🧠 Fetch all trains (GET — public)
   const fetchTrains = async () => {
     try {
       const res = await fetch("http://localhost:3001/api/trains");
+      if (!res.ok) throw new Error("Failed to fetch trains");
       const data = await res.json();
       setTrains(data);
     } catch (err) {
@@ -21,105 +22,141 @@ function ManageTrains() {
     fetchTrains();
   }, []);
 
-  // Delete a train
+  // 🪪 Get JWT token
+  const getToken = () => localStorage.getItem("adminToken");
+
+  // ✅ Handle save from modal (just refresh and close)
+  const handleSave = async () => {
+    await fetchTrains();
+    setShowModal(false);
+    setSelectedTrain(null);
+  };
+
+  // 🗑️ Delete Train (DELETE — requires token)
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this train?")) return;
+
+    const token = getToken();
+    if (!token) {
+      alert("Unauthorized. Please log in again.");
+      return;
+    }
+
     try {
-      await fetch(`http://localhost:3001/api/trains/${id}`, { method: "DELETE" });
-      fetchTrains();
+      const res = await fetch(`http://localhost:3001/api/trains/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        alert("Unauthorized. Please log in again.");
+        return;
+      }
+
+      if (!res.ok) throw new Error("Failed to delete train");
+
+      await fetchTrains();
+      alert("Train deleted successfully!");
     } catch (err) {
       console.error("Error deleting train:", err);
+      alert("Error deleting train. Check console for details.");
     }
   };
 
-  // Save (create or update) a train
-  const handleSave = async (trainData) => {
-    try {
-      if (selectedTrain) {
-        // Update
-        await fetch(`http://localhost:3001/api/trains/${selectedTrain.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(trainData),
-        });
-      } else {
-        // Create
-        await fetch("http://localhost:3001/api/trains", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(trainData),
-        });
-      }
-      fetchTrains();
-    } catch (err) {
-      console.error("Error saving train:", err);
-    }
+  // 🚪 Logout — remove token and redirect
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    alert("You have been logged out.");
+    window.location.href = "/admin/login"; // adjust route as needed
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Manage Trains</h2>
-      <button
-        className="bg-green-600 text-white px-4 py-2 rounded mb-4"
-        onClick={() => {
-          setSelectedTrain(null);
-          setIsModalOpen(true);
-        }}
-      >
-        Add Train
-      </button>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Manage Trains</h1>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setSelectedTrain(null);
+              setShowModal(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+          >
+            + Add Train
+          </button>
+          <button
+            onClick={handleLogout}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
 
-      <table className="w-full border-collapse border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border px-3 py-2">Name</th>
-            <th className="border px-3 py-2">Number</th>
-            <th className="border px-3 py-2">Seats</th>
-            <th className="border px-3 py-2">Price</th>
-            <th className="border px-3 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trains.map((train) => (
-            <tr key={train.id}>
-              <td className="border px-3 py-2">{train.name}</td>
-              <td className="border px-3 py-2">{train.number}</td>
-              <td className="border px-3 py-2">
-                {train.seats !== undefined && train.seats !== null ? train.seats : "-"}
-              </td>
-              <td className="border px-3 py-2">
-                {train.price !== undefined && train.price !== null ? train.price.toFixed(2) : "-"}
-              </td>
-              <td className="border px-3 py-2 flex gap-2">
-                <button
-                  className="bg-yellow-500 text-white px-2 py-1 rounded"
-                  onClick={() => {
-                    setSelectedTrain(train);
-                    setIsModalOpen(true);
-                  }}
-                >
-                  Edit
-                </button>
-                <button
-                  className="bg-red-600 text-white px-2 py-1 rounded"
-                  onClick={() => handleDelete(train.id)}
-                >
-                  Delete
-                </button>
-              </td>
+      {/* Trains List */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-200 text-gray-700">
+              <th className="px-6 py-3 text-left">Train Name</th>
+              <th className="px-6 py-3 text-left">Number</th>
+              <th className="px-6 py-3 text-left">Seats</th>
+              <th className="px-6 py-3 text-left">Price</th>
+              <th className="px-6 py-3 text-left">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {trains.length > 0 ? (
+              trains.map((train) => (
+                <tr key={train.id} className="border-t hover:bg-gray-50">
+                  <td className="px-6 py-3">{train.name}</td>
+                  <td className="px-6 py-3">{train.number}</td>
+                  <td className="px-6 py-3">{train.seats}</td>
+                  <td className="px-6 py-3">R{train.price}</td>
+                  <td className="px-6 py-3 flex gap-3">
+                    <button
+                      onClick={() => {
+                        setSelectedTrain(train);
+                        setShowModal(true);
+                      }}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(train.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan="5"
+                  className="text-center py-6 text-gray-500 italic"
+                >
+                  No trains available.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      <TrainModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSave}
-        initialData={selectedTrain}
-      />
+      {/* Train Modal */}
+      {showModal && (
+        <TrainModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onSave={handleSave}
+          initialData={selectedTrain}
+        />
+      )}
     </div>
   );
 }
-
-export default ManageTrains;

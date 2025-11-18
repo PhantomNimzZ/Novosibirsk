@@ -1,59 +1,52 @@
-const express = require('express');
-const cors = require('cors'); 
-const { PrismaClient } = require('@prisma/client');
-const verifyToken = require("./middleware/authMiddleware");
-const bookingRoutes = require("./routes/bookings");
-const trainsRoutes = require("./routes/trains");
-const adminAuthRoutes = require("./routes/adminAuth");
+import express from "express";
+import cors from "cors";
+import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
+
+import bookingRoutes from "./routes/bookings.js";
+import trainsRoutes from "./routes/trains.js";
+import adminAuthRoutes from "./routes/adminAuth.js";
+import adminStatsRoutes from "./routes/adminStatsRoutes.js";
+import verifyToken from "./middleware/authMiddleware.js";
+
 const app = express();
 const PORT = 3001;
 const prisma = new PrismaClient();
 
-const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET || "supersecretkey";
 
 app.use(cors());
 app.use(express.json());
 
-
-// Mount all booking CRUD under /api/bookings
+// -------------------------
+// ROUTES
+// -------------------------
 app.use("/api/bookings", bookingRoutes);
-app.use("/api/trains", trainsRoutes); // ✅ Mount trains
-//app.use("/api/admin/protected", verifyToken, adminProtectedRouter);
-
-
+app.use("/api/trains", trainsRoutes);
 app.use("/api/admin", adminAuthRoutes);
 
-// Protected routes example (if you have a dedicated admin area)
+// Protected admin route example
 app.use("/api/admin/protected", verifyToken, (req, res) => {
   res.json({ message: "Access granted to protected admin route." });
 });
 
-app.post("/api/admin/login", (req, res) => {
-  const { email, password } = req.body;
+// // Admin login
+// app.post("/api/admin/login", (req, res) => {
+//   const { email, password } = req.body;
 
-  // Example admin user for testing
-  if (email === "admin@prasa.com" && password === "password123") {
-    const token = jwt.sign({ email, role: "admin" }, SECRET_KEY, { expiresIn: "1h" });
-    return res.json({ token });
-  }
+//   if (email === "admin@prasa.com" && password === "password123") {
+//     const token = jwt.sign({ email, role: "admin" }, SECRET_KEY, {
+//       expiresIn: "1h",
+//     });
+//     return res.json({ token });
+//   }
 
-  return res.status(401).json({ error: "Invalid email or password" });
-});
+//   return res.status(401).json({ error: "Invalid email or password" });
+// });
 
-// Sample API route for train search
-app.get('/api/search', (req, res) => {
-  const { from, to, date } = req.query;
-
-  const results = [
-    { id: 1, trainNumber: 'Blue Train', departure: from, destination: to, date, time: '08:00', price: 'R250' },
-    { id: 2, trainNumber: 'Shosholoza Express', departure: from, destination: to, date, time: '14:00', price: 'R200' },
-  ];
-
-  res.json(results);
-});
-
-// Live tracking API (unchanged)
+// -------------------------
+// LIVE TRAIN LOCATION ENDPOINT
+// -------------------------
 const trainRoutes = {
   "commuter-line---durban": [
     { station: "Durban", lat: -29.8587, lng: 31.0218 },
@@ -68,7 +61,7 @@ const trainRoutes = {
   ],
 };
 
-app.get('/api/live-location/:trainId', (req, res) => {
+app.get("/api/live-location/:trainId", (req, res) => {
   const { trainId } = req.params;
   console.log("📍 Live tracking request for train:", trainId);
 
@@ -83,12 +76,22 @@ app.get('/api/live-location/:trainId', (req, res) => {
   res.json({
     trainId,
     location: currentStop.station,
-    position: { lat: currentStop.lat, lng: currentStop.lng, station: currentStop.station },
+    position: {
+      lat: currentStop.lat,
+      lng: currentStop.lng,
+      station: currentStop.station,
+    },
     updatedAt: new Date().toISOString(),
     status: "On Time",
   });
 });
 
+// -------------------------
+// ADMIN STATS ROUTES (NEW)
+// -------------------------
+app.use("/api/admin/stats", adminStatsRoutes);
+
+// -------------------------
 app.listen(PORT, () => {
   console.log(`🚆 Server running on http://localhost:${PORT}`);
 });

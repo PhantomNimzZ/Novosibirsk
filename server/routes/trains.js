@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
-const { PrismaClient } = require("@prisma/client");
-const verifyToken = require("../middleware/authMiddleware"); // ✅ Import middleware
+import { PrismaClient } from "@prisma/client";
+import verifyToken from "../middleware/authMiddleware.js"; // ✅ Import middleware
 const prisma = new PrismaClient();
 
 // PUBLIC: Get all trains
@@ -60,4 +60,4 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

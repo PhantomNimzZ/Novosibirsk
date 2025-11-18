@@ -1,8 +1,11 @@
-const express = require("express");
-const { PrismaClient } = require("@prisma/client");
-const verifyToken = require("../middleware/authMiddleware");
-const prisma = new PrismaClient();
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+
 const router = express.Router();
+const prisma = new PrismaClient();
+
+import verifyToken from "../middleware/authMiddleware.js";
+
 
 // CREATE a booking (public)
 router.post("/", async (req, res) => {
@@ -92,4 +95,4 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

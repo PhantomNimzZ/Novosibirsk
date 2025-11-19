@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
-import verifyToken from "../middleware/authMiddleware.js";
+import verifyToken from "../../middleware/authMiddleware.js";
 
 
 // CREATE a booking (public)

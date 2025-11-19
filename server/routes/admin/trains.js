@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { PrismaClient } from "@prisma/client";
-import verifyToken from "../middleware/authMiddleware.js"; // ✅ Import middleware
+import verifyToken from "../../middleware/authMiddleware.js"; // ✅ Import middleware
 const prisma = new PrismaClient();
 
 // PUBLIC: Get all trains

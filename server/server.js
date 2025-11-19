@@ -3,11 +3,12 @@ import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 
-import bookingRoutes from "./routes/bookings.js";
-import trainsRoutes from "./routes/trains.js";
-import adminAuthRoutes from "./routes/adminAuth.js";
-import adminStatsRoutes from "./routes/adminStatsRoutes.js";
-import verifyToken from "./middleware/authMiddleware.js";
+import bookingRoutes from "./routes/admin/bookings.js";
+import trainsRoutes from "./routes/admin/trains.js";
+import adminAuthRoutes from "./routes/admin/adminAuth.js";
+import adminStatsRoutes from "./routes/admin/adminStatsRoutes.js";
+import exportRoutes from "./routes/admin/exportRoutes.js";
+import verifyToken from "./middleware/authMiddleware.js";   // ✅ FIXED
 
 const app = express();
 const PORT = 3001;
@@ -23,29 +24,20 @@ app.use(express.json());
 // -------------------------
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/trains", trainsRoutes);
+
+// Admin login
 app.use("/api/admin", adminAuthRoutes);
 
-// Protected admin route example
+// Example protected admin test route
 app.use("/api/admin/protected", verifyToken, (req, res) => {
   res.json({ message: "Access granted to protected admin route." });
 });
 
-// // Admin login
-// app.post("/api/admin/login", (req, res) => {
-//   const { email, password } = req.body;
+app.use("/api/admin/export", exportRoutes);
 
-//   if (email === "admin@prasa.com" && password === "password123") {
-//     const token = jwt.sign({ email, role: "admin" }, SECRET_KEY, {
-//       expiresIn: "1h",
-//     });
-//     return res.json({ token });
-//   }
-
-//   return res.status(401).json({ error: "Invalid email or password" });
-// });
 
 // -------------------------
-// LIVE TRAIN LOCATION ENDPOINT
+// LIVE TRAIN LOCATION
 // -------------------------
 const trainRoutes = {
   "commuter-line---durban": [
@@ -87,7 +79,7 @@ app.get("/api/live-location/:trainId", (req, res) => {
 });
 
 // -------------------------
-// ADMIN STATS ROUTES (NEW)
+// ADMIN STATS
 // -------------------------
 app.use("/api/admin/stats", adminStatsRoutes);
 

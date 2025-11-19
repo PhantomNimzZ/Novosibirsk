@@ -4,13 +4,16 @@ import {
   getBookingsByDate,
   getBookingsByRoute,
   getRevenueStats
-} from "../controllers/adminStatsController.js";
+} from "../../controllers/admin/adminStatsController.js";
+import { exportBookingsCSV } from "../../controllers/admin/exportController.js";
+
 
 const router = express.Router();
 
 router.get("/overview", getOverviewStats);
 router.get("/bookings-by-date", getBookingsByDate);
 router.get("/bookings-by-route", getBookingsByRoute);
-router.get("/revenue", getRevenueStats);   // ✅ ADD THIS
+router.get("/revenue", getRevenueStats);   
+router.get("/export/bookings", exportBookingsCSV); //CSV Export
 
 export default router;

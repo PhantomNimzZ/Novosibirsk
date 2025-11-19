@@ -1,101 +1,44 @@
-const express = require('express');
-const cors = require('cors'); 
-const { PrismaClient } = require('@prisma/client');
+import express from "express";
+import cors from "cors";
+import { PrismaClient } from "@prisma/client";
+import jwt from "jsonwebtoken";
+
+import bookingRoutes from "./routes/admin/bookings.js";
+import trainsRoutes from "./routes/admin/trains.js";
+import adminAuthRoutes from "./routes/admin/adminAuth.js";
+import adminStatsRoutes from "./routes/admin/adminStatsRoutes.js";
+import exportRoutes from "./routes/admin/exportRoutes.js";
+import verifyToken from "./middleware/authMiddleware.js";   // ✅ FIXED
+
 const app = express();
 const PORT = 3001;
 const prisma = new PrismaClient();
 
+const SECRET_KEY = process.env.JWT_SECRET || "supersecretkey";
+
 app.use(cors());
 app.use(express.json());
 
-// Sample API route for train search
-app.get('/api/search', (req, res) => {
-  const { from, to, date } = req.query;
+// -------------------------
+// ROUTES
+// -------------------------
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/trains", trainsRoutes);
 
-  const results = [
-    {
-      id: 1,
-      train: 'Blue Train',
-      from,
-      to,
-      date,
-      time: '08:00',
-      price: 'R250',
-    },
-    {
-      id: 2,
-      train: 'Shosholoza Express',
-      from,
-      to,
-      date,
-      time: '14:00',
-      price: 'R200',
-    },
-  ];
+// Admin login
+app.use("/api/admin", adminAuthRoutes);
 
-  res.json(results);
+// Example protected admin test route
+app.use("/api/admin/protected", verifyToken, (req, res) => {
+  res.json({ message: "Access granted to protected admin route." });
 });
 
-
-app.post('/api/book', async (req, res) => {
-  console.log("📥 Booking request received:", req.body);
-
-  try {
-    const {
-      train,
-      from,
-      to,
-      date,
-      time,
-      price,
-      name,
-      email,
-      idNumber,
-      payment
-    } = req.body;
-
-    const booking = await prisma.booking.create({
-      data: {
-        train,
-        from,
-        to,
-        date,
-        time,
-        price,
-        name,
-        email,
-        idNumber,
-        payment
-      }
-    });
-
-    res.status(201).json({ message: "Booking saved", booking });
-  } catch (error) {
-    console.error("❌ Booking error:", error);
-    res.status(500).json({ message: "Failed to save booking" });
-  }
-});
-
-app.get('/api/bookings', async (req, res) => {
-  try {
-    const bookings = await prisma.booking.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    res.json(bookings);
-  } catch (error) {
-    console.error("❌ Error fetching bookings:", error);
-    res.status(500).json({ message: "Failed to fetch bookings" });
-  }
-});
+app.use("/api/admin/export", exportRoutes);
 
 
-app.listen(PORT, () => {
-  console.log(`🚆 Server running on http://localhost:${PORT}`);
-});
-
-
+// -------------------------
+// LIVE TRAIN LOCATION
+// -------------------------
 const trainRoutes = {
   "commuter-line---durban": [
     { station: "Durban", lat: -29.8587, lng: 31.0218 },
@@ -110,7 +53,7 @@ const trainRoutes = {
   ],
 };
 
-app.get('/api/live-location/:trainId', (req, res) => {
+app.get("/api/live-location/:trainId", (req, res) => {
   const { trainId } = req.params;
   console.log("📍 Live tracking request for train:", trainId);
 
@@ -135,3 +78,12 @@ app.get('/api/live-location/:trainId', (req, res) => {
   });
 });
 
+// -------------------------
+// ADMIN STATS
+// -------------------------
+app.use("/api/admin/stats", adminStatsRoutes);
+
+// -------------------------
+app.listen(PORT, () => {
+  console.log(`🚆 Server running on http://localhost:${PORT}`);
+});

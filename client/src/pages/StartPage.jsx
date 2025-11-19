@@ -15,6 +15,7 @@ function StartPage() {
       fontFamily: 'sans-serif',
     }}>
       <h1 style={{ fontSize: '3rem', marginBottom: '2rem' }}>PRASA</h1>
+
       <button
         onClick={() => navigate('/select')}
         style={{
@@ -29,7 +30,25 @@ function StartPage() {
       >
         Start
       </button>
+
       <p style={{ marginTop: '1rem', opacity: 0.7 }}>Book your journey now</p>
+
+      {/* Admin Dashboard Button - TEMP */}
+      <button
+        onClick={() => navigate('/admin')}
+        style={{
+          marginTop: '2rem',
+          padding: '0.8rem 1.6rem',
+          fontSize: '1rem',
+          backgroundColor: '#26c6da',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          color: '#fff',
+        }}
+      >
+        Admin Dashboard
+      </button>
     </div>
   );
 }

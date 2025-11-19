@@ -13,17 +13,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Booking {
-  id        Int      @id @default(autoincrement())
-  train     String
-  from      String
-  to        String
-  date      String
-  time      String
-  price     String
-  name      String
-  email     String
-  idNumber  String
-  payment   String
-  createdAt DateTime @default(now())
+
+model Train {
+  id     Int     @id @default(autoincrement())
+  name   String
+  number String
+  seats  Int     @default(0)      // temporary default
+  price  Float   @default(0.0)    // temporary default
+  bookings Booking[]
 }
+
+
+
+
+model Booking {
+  id            Int      @id @default(autoincrement())
+  passengerName String
+  email         String
+  idNumber      String
+  trainNumber   String
+  departure     String
+  destination   String
+  date          DateTime
+  time          String
+  seat          String
+  price         Float
+  paymentStatus String
+  status        String
+  train         Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  trainId       Int
+
+  createdAt     DateTime @default(now())
+}
+
+

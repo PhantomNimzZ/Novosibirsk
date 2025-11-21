@@ -1,7 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
-import LiveTracker from "../components/LiveTracker";
-import { stationCoordinatesByCity } from "../constants/stationCoordinates";
+import LiveTracker from "../../components/maps/LiveTracker.jsx";
+import { stationCoordinatesByCity } from "../../constants/stationCoordinates.js";
 
 const BookNow = () => {
   const location = useLocation();

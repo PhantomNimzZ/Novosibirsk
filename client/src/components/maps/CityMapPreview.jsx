@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { cityStations } from "../constants/stationCoordinates";
+import { cityStations } from "../../constants/stationCoordinates";
 
 // const cityStations = {
 //   "cape-town": [

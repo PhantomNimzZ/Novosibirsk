@@ -32,31 +32,33 @@ const CityMapPreview = ({ cityId }) => {
     : [-29.8587, 31.0218]; // Fallback to Durban
 
   return (
-    <MapContainer
-      center={center}
-      zoom={11}
-      style={{ height: "300px", width: "100%", marginTop: "1rem", borderRadius: "8px" }}
-      scrollWheelZoom={false}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-      />
-
-      {stations.map((station, index) => (
-        <Marker key={index} position={[station.lat, station.lng]}>
-          <Popup>{station.name}</Popup>
-          <Tooltip direction="top" offset={[0, -10]} permanent>{station.name}</Tooltip>
-        </Marker>
-      ))}
-
-      {stations.length > 1 && (
-        <Polyline
-          positions={stations.map(s => [s.lat, s.lng])}
-          color="blue"
+    <div className="w-full flex justify-center mt-6">
+      <MapContainer
+        center={center}
+        zoom={11}
+        style={{ height: "300px", width: "100%", marginTop: "1rem", borderRadius: "8px" }}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
         />
-      )}
-    </MapContainer>
+
+        {stations.map((station, index) => (
+          <Marker key={index} position={[station.lat, station.lng]}>
+            <Popup>{station.name}</Popup>
+            <Tooltip direction="top" offset={[0, -10]} permanent>{station.name}</Tooltip>
+          </Marker>
+        ))}
+
+        {stations.length > 1 && (
+          <Polyline
+            positions={stations.map(s => [s.lat, s.lng])}
+            color="blue"
+          />
+        )}
+      </MapContainer>
+    </div>
   );
 };
 

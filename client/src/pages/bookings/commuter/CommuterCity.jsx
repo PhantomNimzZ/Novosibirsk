@@ -1,64 +1,50 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import CityMapPreview from "../../../components/maps/CityMapPreview.jsx";
-import { stationCoordinatesByCity } from "../../../constants/stationCoordinates.js";
+import PageContainer from "../../../components/ui/PageContainer";
+import PrimaryButton from "../../../components/ui/PrimaryButton";
+import CityMapPreview from "../../../components/maps/CityMapPreview";
 
 const CommuterCity = () => {
   const { cityId } = useParams();
   const navigate = useNavigate();
 
-  const cityStations = stationCoordinatesByCity[cityId] || {};
-  const stationNames = Object.keys(cityStations);
+  const cityNames = {
+    "cape-town": "Cape Town",
+    "johannesburg": "Johannesburg",
+    "durban": "Durban",
+  };
 
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const cityName = cityNames[cityId] || "Unknown City";
 
-  const handleBook = () => {
-    if (!from || !to || from === to) {
-      alert("Please select different departure and destination stations.");
-      return;
-    }
-
-    const train = {
-      train: `Commuter Line - ${cityId}`,
-      from,
-      to,
-      time: "Every 30 min",
-      price: "R25",
-    };
-
-    navigate("/book", { state: { train } });
+  const handleSelectRoute = () => {
+    navigate(`/book?city=${cityId}`);
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <h1>🚉 {cityId.replace("-", " ").toUpperCase()} - Commuter Booking</h1>
-      <label>
-        From Station:
-        <select value={from} onChange={(e) => setFrom(e.target.value)} style={{ marginLeft: "1rem" }}>
-          <option value="">-- Select --</option>
-          {stationNames.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </label>
-      <br /><br />
-      <label>
-        To Station:
-        <select value={to} onChange={(e) => setTo(e.target.value)} style={{ marginLeft: "1rem" }}>
-          <option value="">-- Select --</option>
-          {stationNames.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </label>
-      <br /><br />
-      <p><strong>Fare:</strong> R25</p>
-      <button onClick={handleBook}>Book Now</button>
+    <PageContainer title={`Commuter Routes – ${cityName}`}>
+      <div className="flex flex-col gap-8">
 
-      {/* 🗺️ City Station Map */}
-      <CityMapPreview cityId={cityId} />
-    </div>
+        {/* Map Section */}
+        <div className="w-full rounded-xl overflow-hidden shadow-md border border-gray-200">
+          <CityMapPreview cityId={cityId} />
+        </div>
+
+        {/* Info Section */}
+        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+          <h2 className="text-xl font-semibold text-gray-800 mb-3">
+            Available Routes
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            View the available commuter train routes in {cityName}.  
+            Select a route to continue with your booking.
+          </p>
+
+          <PrimaryButton onClick={handleSelectRoute} className="w-full">
+            Select Route
+          </PrimaryButton>
+        </div>
+      </div>
+    </PageContainer>
   );
 };
 

@@ -2,11 +2,16 @@ import React from "react";
 
 const PageContainer = ({ title, children }) => {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
+    <div className="w-full px-4 py-8 flex flex-col items-center">
       {title && (
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">{title}</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">
+          {title}
+        </h1>
       )}
-      {children}
+
+      <div className="w-full max-w-3xl">
+        {children}
+      </div>
     </div>
   );
 };

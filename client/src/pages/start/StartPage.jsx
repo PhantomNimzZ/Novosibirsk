@@ -1,56 +1,36 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+import PrimaryButton from "../../components/ui/PrimaryButton";
+import AppLayout from "../../components/layout/AppLayout";
 
-function StartPage() {
+export default function StartPage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{
-      height: '100vh',
-      background: 'linear-gradient(to bottom right, #1e1f3f, #2a2759)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#fff',
-      fontFamily: 'sans-serif',
-    }}>
-      <h1 style={{ fontSize: '3rem', marginBottom: '2rem' }}>PRASA</h1>
+    <AppLayout>
+      {/* Fullscreen Centered Content */}
+      <div className="flex flex-col items-center justify-center text-center min-h-screen">
 
-      <button
-        onClick={() => navigate('/select')}
-        style={{
-          padding: '1rem 2rem',
-          fontSize: '1.2rem',
-          backgroundColor: '#5c6bc0',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          color: '#fff',
-        }}
-      >
-        Start
-      </button>
+        <h1 className="text-6xl font-bold mb-10 tracking-wide text-gray-900">
+          PRASA
+        </h1>
 
-      <p style={{ marginTop: '1rem', opacity: 0.7 }}>Book your journey now</p>
+        <PrimaryButton
+          onClick={() => navigate("/select")}
+          className="px-8 py-4 text-xl"
+        >
+          Start
+        </PrimaryButton>
 
-      {/* Admin Dashboard Button - TEMP */}
-      <button
-        onClick={() => navigate('/admin')}
-        style={{
-          marginTop: '2rem',
-          padding: '0.8rem 1.6rem',
-          fontSize: '1rem',
-          backgroundColor: '#26c6da',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          color: '#fff',
-        }}
-      >
-        Admin Dashboard
-      </button>
-    </div>
+        <p className="mt-5 text-gray-600 text-lg">Book your journey now</p>
+
+        {/* TEMP ADMIN BUTTON */}
+        <button
+          onClick={() => navigate("/admin")}
+          className="mt-10 px-6 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-600 transition text-white font-medium"
+        >
+          Admin Dashboard
+        </button>
+      </div>
+    </AppLayout>
   );
 }
-
-export default StartPage;

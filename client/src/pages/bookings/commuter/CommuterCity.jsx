@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import CityMapPreview from "../components/CityMapPreview";
-import { stationCoordinatesByCity } from "../constants/stationCoordinates";
+import CityMapPreview from "../../../components/maps/CityMapPreview";
+import { stationCoordinatesByCity } from "../../../constants/stationCoordinates";
 
 const CommuterCity = () => {
   const { cityId } = useParams();

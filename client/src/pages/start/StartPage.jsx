@@ -1,51 +1,26 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 function StartPage() {
   const navigate = useNavigate();
 
   return (
-    <div style={{
-      height: '100vh',
-      background: 'linear-gradient(to bottom right, #1e1f3f, #2a2759)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#fff',
-      fontFamily: 'sans-serif',
-    }}>
-      <h1 style={{ fontSize: '3rem', marginBottom: '2rem' }}>PRASA</h1>
+    <div className="h-screen bg-gradient-to-br from-[#1e1f3f] to-[#2a2759] flex flex-col items-center justify-center text-white font-sans">
+      
+      <h1 className="text-5xl mb-8">PRASA</h1>
 
       <button
-        onClick={() => navigate('/select')}
-        style={{
-          padding: '1rem 2rem',
-          fontSize: '1.2rem',
-          backgroundColor: '#5c6bc0',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          color: '#fff',
-        }}
+        onClick={() => navigate("/select")}
+        className="px-8 py-4 text-lg bg-indigo-600 rounded-lg cursor-pointer text-white hover:bg-indigo-700 transition"
       >
         Start
       </button>
 
-      <p style={{ marginTop: '1rem', opacity: 0.7 }}>Book your journey now</p>
+      <p className="mt-4 opacity-70">Book your journey now</p>
 
-      {/* Admin Dashboard Button - TEMP */}
+      {/* Admin Dashboard Button */}
       <button
-        onClick={() => navigate('/admin')}
-        style={{
-          marginTop: '2rem',
-          padding: '0.8rem 1.6rem',
-          fontSize: '1rem',
-          backgroundColor: '#26c6da',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          color: '#fff',
-        }}
+        onClick={() => navigate("/admin")}
+        className="mt-8 px-6 py-3 text-base bg-cyan-400 rounded-md text-white cursor-pointer hover:bg-cyan-500 transition"
       >
         Admin Dashboard
       </button>

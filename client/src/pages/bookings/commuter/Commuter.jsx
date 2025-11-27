@@ -10,22 +10,15 @@ const Commuter = () => {
   ];
 
   return (
-    <div style={{ textAlign: "center", paddingTop: "5rem", background: "#f5f5f5", minHeight: "100vh" }}>
-      <h1 style={{ fontSize: "2.5rem", marginBottom: "2rem" }}>🚉 Choose Your City</h1>
-      <div style={{ display: "flex", justifyContent: "center", gap: "1rem" }}>
+    <div className="min-h-screen bg-[#12172b] text-white flex flex-col items-center pt-24 px-4">
+      <h1 className="text-3xl font-semibold mb-10">🚉 Choose Your City</h1>
+
+      <div className="flex flex-wrap justify-center gap-4">
         {cities.map((city) => (
           <button
             key={city.id}
             onClick={() => navigate(`/commuter/${city.id}`)}
-            style={{
-              padding: "1rem 2rem",
-              fontSize: "1rem",
-              backgroundColor: "#12172b",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
+            className="px-6 py-3 bg-white text-black rounded-xl shadow-lg hover:bg-gray-200 transition font-medium"
           >
             {city.name}
           </button>

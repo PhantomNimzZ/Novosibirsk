@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import './index.css';
 import StartPage from './pages/start/StartPage.jsx';
 import RouteType from "./pages/bookings/RouteType.jsx";
 import LongDistance from './pages/bookings/long-distance/LongDistance.jsx';

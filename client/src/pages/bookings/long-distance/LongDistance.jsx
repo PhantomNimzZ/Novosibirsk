@@ -27,69 +27,89 @@ const LongDistance = () => {
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif", background: "#f5f5f5", minHeight: "100vh" }}>
-      <h1 style={{ textAlign: "center", marginBottom: "2rem" }}>🚆 Long-Distance Train Booking</h1>
-      <form onSubmit={handleSearch} style={{ maxWidth: "500px", margin: "0 auto" }}>
-        <label>
-          From:
+    <div className="min-h-screen bg-[#12172b] text-white px-4 py-10">
+      <h1 className="text-center text-3xl font-semibold mb-10">
+        🚆 Long-Distance Train Booking
+      </h1>
+
+      {/* FORM */}
+      <form
+        onSubmit={handleSearch}
+        className="max-w-md mx-auto bg-white text-black p-6 rounded-2xl shadow-lg"
+      >
+        <label className="block mb-4">
+          <span className="font-medium">From:</span>
           <input
             type="text"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             placeholder="e.g. Cape Town"
             required
-            style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
           />
         </label>
-        <label>
-          To:
+
+        <label className="block mb-4">
+          <span className="font-medium">To:</span>
           <input
             type="text"
             value={to}
             onChange={(e) => setTo(e.target.value)}
             placeholder="e.g. Johannesburg"
             required
-            style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
           />
         </label>
-        <label>
-          Travel Date:
+
+        <label className="block mb-4">
+          <span className="font-medium">Travel Date:</span>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             required
-            style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem" }}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
           />
         </label>
-        <label>
-          Passengers:
+
+        <label className="block mb-6">
+          <span className="font-medium">Passengers:</span>
           <input
             type="number"
             value={passengers}
             onChange={(e) => setPassengers(e.target.value)}
             min="1"
             max="10"
-            style={{ width: "100%", marginBottom: "1.5rem", padding: "0.5rem" }}
+            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
           />
         </label>
-        <button type="submit" style={{ width: "100%", padding: "0.75rem", backgroundColor: "#12172b", color: "white", fontWeight: "bold" }}>
+
+        <button
+          type="submit"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-md"
+        >
           Search Trains
         </button>
       </form>
 
+      {/* SEARCH RESULTS */}
       {results.length > 0 && (
-        <div style={{ maxWidth: "600px", margin: "3rem auto 0", background: "#fff", padding: "1.5rem", borderRadius: "8px" }}>
-          <h2>Available Trains</h2>
-          <ul style={{ listStyle: "none", paddingLeft: 0 }}>
+        <div className="max-w-xl mx-auto mt-10 bg-white text-black p-6 rounded-2xl shadow-lg">
+          <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
+
+          <ul>
             {results.map((train) => (
-              <li key={train.id} style={{ padding: "1rem 0", borderBottom: "1px solid #ddd" }}>
-                <strong>{train.train}</strong><br />
-                Departure: {train.time}<br />
-                Price: {train.price}<br />
+              <li
+                key={train.id}
+                className="border-b last:border-none py-4"
+              >
+                <p className="font-semibold text-lg">{train.train}</p>
+                <p>Departure: {train.time}</p>
+                <p>Price: {train.price}</p>
+
                 <button
                   onClick={() => navigate("/book", { state: { train } })}
-                  style={{ marginTop: "0.5rem", padding: "0.5rem 1rem", backgroundColor: "#007bff", color: "white", border: "none" }}
+                  className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
                 >
                   Book Now
                 </button>

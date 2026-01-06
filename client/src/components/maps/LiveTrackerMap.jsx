@@ -64,6 +64,7 @@ const AnimateZoomToStations = ({ route }) => {
 };
 
 const LiveTrackerMap = ({ lat, lng, station = "Unknown Station", route = [] }) => {
+  if (!lat || !lng) return null;
   return (
     <MapContainer
       center={[lat, lng]}

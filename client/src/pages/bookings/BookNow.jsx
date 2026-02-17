@@ -11,9 +11,13 @@ const BookNow = () => {
   const [email, setEmail] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [payment, setPayment] = useState("online");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBooking = async (e) => {
     e.preventDefault();
+
+    if (isSubmitting) return; // prevent double submit
+    setIsSubmitting(true);
 
     const bookingDetails = {
       train: train.train,
@@ -29,17 +33,24 @@ const BookNow = () => {
     };
 
     try {
-      const response = await fetch("http://localhost:3001/api/book", {
+      const response = await fetch("http://localhost:3001/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingDetails),
       });
 
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to save booking");
+      }
+
       alert("🎉 Booking saved successfully!");
     } catch (error) {
       console.error("❌ Booking error:", error);
       alert("There was an error saving your booking.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -148,9 +159,14 @@ const BookNow = () => {
 
           <button
             type="submit"
-            className="w-full bg-[#12172b] text-white py-3 rounded-lg font-semibold hover:bg-blue-950 transition mt-4"
+            disabled={isSubmitting}
+            className={`w-full py-3 rounded-lg font-semibold transition mt-4
+              ${isSubmitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-[#12172b] text-white hover:bg-blue-950"}
+            `}
           >
-            Confirm Booking
+            {isSubmitting ? "Processing..." : "Confirm Booking"}
           </button>
         </form>
       </div>

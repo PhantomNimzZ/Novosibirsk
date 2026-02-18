@@ -1,5 +1,7 @@
+// client/src/pages/bookings/long-distance/LongDistance.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../../../api/config"; // ✅ Centralised URL
 
 const LongDistance = () => {
   const [from, setFrom] = useState("");
@@ -7,22 +9,29 @@ const LongDistance = () => {
   const [date, setDate] = useState("");
   const [passengers, setPassengers] = useState(1);
   const [results, setResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false); // ✅ Track whether a search was made
+  const [isSearching, setIsSearching] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    console.log("🔍 Search triggered with:", from, to, date);
+    setIsSearching(true);
+    setHasSearched(false);
 
     try {
       const response = await fetch(
-        `http://localhost:3001/api/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}`
+        // ✅ passengers now included in the query
+        `${API_BASE}/api/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}&passengers=${passengers}`
       );
       const data = await response.json();
-      console.log("✅ Response received:", data);
-      setResults(data);
+      setResults(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("❌ Search failed", err);
+      console.error("Search failed", err);
+      setResults([]);
+    } finally {
+      setHasSearched(true);
+      setIsSearching(false);
     }
   };
 
@@ -32,7 +41,7 @@ const LongDistance = () => {
         🚆 Long-Distance Train Booking
       </h1>
 
-      {/* FORM */}
+      {/* Search Form */}
       <form
         onSubmit={handleSearch}
         className="max-w-md mx-auto bg-white text-black p-6 rounded-2xl shadow-lg"
@@ -77,7 +86,7 @@ const LongDistance = () => {
           <input
             type="number"
             value={passengers}
-            onChange={(e) => setPassengers(e.target.value)}
+            onChange={(e) => setPassengers(Number(e.target.value))}
             min="1"
             max="10"
             className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
@@ -86,36 +95,46 @@ const LongDistance = () => {
 
         <button
           type="submit"
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-md"
+          disabled={isSearching}
+          className={`w-full py-3 font-semibold rounded-lg transition shadow-md text-white
+            ${isSearching ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
         >
-          Search Trains
+          {isSearching ? "Searching..." : "Search Trains"}
         </button>
       </form>
 
-      {/* SEARCH RESULTS */}
-      {results.length > 0 && (
-        <div className="max-w-xl mx-auto mt-10 bg-white text-black p-6 rounded-2xl shadow-lg">
-          <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
-
-          <ul>
-            {results.map((train) => (
-              <li
-                key={train.id}
-                className="border-b last:border-none py-4"
-              >
-                <p className="font-semibold text-lg">{train.train}</p>
-                <p>Departure: {train.time}</p>
-                <p>Price: {train.price}</p>
-
-                <button
-                  onClick={() => navigate("/book", { state: { train } })}
-                  className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                >
-                  Book Now
-                </button>
-              </li>
-            ))}
-          </ul>
+      {/* Results */}
+      {hasSearched && (
+        <div className="max-w-xl mx-auto mt-10">
+          {results.length > 0 ? (
+            <div className="bg-white text-black p-6 rounded-2xl shadow-lg">
+              <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
+              <ul>
+                {results.map((train) => (
+                  <li key={train.id} className="border-b last:border-none py-4">
+                    <p className="font-semibold text-lg">{train.train}</p>
+                    <p>Departure: {train.time}</p>
+                    <p>Price: {train.price}</p>
+                    {passengers > 1 && (
+                      <p className="text-sm text-gray-500">for {passengers} passengers</p>
+                    )}
+                    <button
+                      onClick={() => navigate("/book", { state: { train } })}
+                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                    >
+                      Book Now
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            // ✅ Empty state — previously nothing was shown
+            <div className="text-center py-8 opacity-70">
+              <p className="text-lg">No trains found for this route.</p>
+              <p className="text-sm mt-2">Try a different date or destination.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

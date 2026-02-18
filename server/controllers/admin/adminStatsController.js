@@ -1,36 +1,32 @@
-import prisma from "../../lib/prisma.js";
+// server/controllers/admin/adminStatsController.js
+import prisma from "../../lib/prisma.js"; // ✅ Singleton
 import { startOfDay } from "date-fns";
 
-// =========================
-// OVERVIEW STATS (KPI CARDS)
-// =========================
+// ─────────────────────────────────────────
+// OVERVIEW STATS (KPI Cards)
+// ─────────────────────────────────────────
 export const getOverviewStats = async (req, res) => {
   try {
-    // -------- TOTAL BOOKINGS --------
     const totalBookings = await prisma.booking.count();
 
-    // -------- REVENUE (ALL TIME) --------
     const totalRevenueAgg = await prisma.booking.aggregate({
       _sum: { price: true },
     });
     const totalRevenue = totalRevenueAgg._sum.price || 0;
 
-    // -------- BOOKINGS TODAY --------
     const today = startOfDay(new Date());
+
     const bookingsToday = await prisma.booking.count({
-      where: {
-        createdAt: { gte: today },
-      },
+      where: { createdAt: { gte: today } },
     });
 
-    // -------- REVENUE TODAY --------
     const revenueTodayAgg = await prisma.booking.aggregate({
       where: { createdAt: { gte: today } },
       _sum: { price: true },
     });
     const revenueToday = revenueTodayAgg._sum.price || 0;
 
-    // -------- MOST POPULAR ROUTE --------
+    // Most popular route
     const bookings = await prisma.booking.findMany({
       select: { departure: true, destination: true },
     });
@@ -46,51 +42,42 @@ export const getOverviewStats = async (req, res) => {
       mostPopularRoute = Object.entries(routeCounts).sort((a, b) => b[1] - a[1])[0][0];
     }
 
-    // -------- SEND RESPONSE --------
-    res.json({
-      totalBookings,
-      bookingsToday,
-      mostPopularRoute,
-      totalRevenue,
-      revenueToday,
-    });
-
+    res.json({ totalBookings, bookingsToday, mostPopularRoute, totalRevenue, revenueToday });
   } catch (error) {
-    console.log("Overview stats error:", error);
+    console.error("Overview stats error:", error);
     res.status(500).json({ message: "Failed to load overview stats" });
   }
 };
 
-
-// =========================
+// ─────────────────────────────────────────
 // BOOKINGS BY DATE
-// =========================
+// ✅ Fixed: uses raw SQL DATE() to group by day, not by exact timestamp
+// ─────────────────────────────────────────
 export const getBookingsByDate = async (req, res) => {
   try {
-    const stats = await prisma.booking.groupBy({
-      by: ["createdAt"],
-      _count: { createdAt: true },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    const stats = await prisma.$queryRaw`
+      SELECT DATE(createdAt) as date, COUNT(*) as count
+      FROM Booking
+      GROUP BY DATE(createdAt)
+      ORDER BY date ASC
+    `;
 
+    // SQLite returns count as BigInt — convert to Number for JSON serialisation
     const formatted = stats.map((s) => ({
-      date: s.createdAt.toISOString().split("T")[0],
-      count: s._count.createdAt,
+      date: s.date,
+      count: Number(s.count),
     }));
 
     res.json(formatted);
   } catch (error) {
-    console.log(error);
+    console.error("Bookings by date error:", error);
     res.status(500).json({ message: "Failed to load date stats" });
   }
 };
 
-
-// =========================
+// ─────────────────────────────────────────
 // BOOKINGS BY ROUTE
-// =========================
+// ─────────────────────────────────────────
 export const getBookingsByRoute = async (req, res) => {
   try {
     const bookings = await prisma.booking.findMany({
@@ -103,28 +90,21 @@ export const getBookingsByRoute = async (req, res) => {
       map[route] = (map[route] || 0) + 1;
     }
 
-    const formatted = Object.entries(map).map(([route, count]) => ({
-      route,
-      count,
-    }));
+    const formatted = Object.entries(map).map(([route, count]) => ({ route, count }));
 
     res.json(formatted);
   } catch (error) {
-    console.log(error);
+    console.error("Bookings by route error:", error);
     res.status(500).json({ message: "Failed to load route stats" });
   }
 };
 
-
-// =========================
-// REVENUE ENDPOINT (Optional)
-// =========================
+// ─────────────────────────────────────────
+// REVENUE STATS
+// ─────────────────────────────────────────
 export const getRevenueStats = async (req, res) => {
   try {
-    const totalRevenueAgg = await prisma.booking.aggregate({
-      _sum: { price: true },
-    });
-
+    const totalRevenueAgg = await prisma.booking.aggregate({ _sum: { price: true } });
     const today = startOfDay(new Date());
     const revenueTodayAgg = await prisma.booking.aggregate({
       _sum: { price: true },
@@ -136,7 +116,7 @@ export const getRevenueStats = async (req, res) => {
       revenueToday: revenueTodayAgg._sum.price || 0,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Revenue stats error:", error);
     res.status(500).json({ message: "Failed to load revenue stats" });
   }
 };

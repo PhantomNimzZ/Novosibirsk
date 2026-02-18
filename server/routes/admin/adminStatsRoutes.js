@@ -1,19 +1,19 @@
+// server/routes/admin/adminStatsRoutes.js
 import express from "express";
 import {
   getOverviewStats,
   getBookingsByDate,
   getBookingsByRoute,
-  getRevenueStats
+  getRevenueStats,
 } from "../../controllers/admin/adminStatsController.js";
-import { exportBookingsCSV } from "../../controllers/admin/exportController.js";
-
+import verifyToken from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/overview", getOverviewStats);
-router.get("/bookings-by-date", getBookingsByDate);
-router.get("/bookings-by-route", getBookingsByRoute);
-router.get("/revenue", getRevenueStats);   
-router.get("/export/bookings", exportBookingsCSV); //CSV Export
+// ✅ All stats routes are now protected — admins only
+router.get("/overview", verifyToken, getOverviewStats);
+router.get("/bookings-by-date", verifyToken, getBookingsByDate);
+router.get("/bookings-by-route", verifyToken, getBookingsByRoute);
+router.get("/revenue", verifyToken, getRevenueStats);
 
 export default router;

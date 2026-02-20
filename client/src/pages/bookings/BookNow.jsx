@@ -2,9 +2,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import LiveTracker from "../../components/maps/LiveTracker.jsx";
+import SeatSelector from "../../components/booking/SeatSelector.jsx";
 import { stationCoordinatesByCity } from "../../constants/stationCoordinates";
-import { getCityFromTrainId } from "../../utils/routeUtils"; // ✅ Use shared utility
-import { API_BASE } from "../../api/config";                // ✅ No more hardcoded URL
+import { getCityFromTrainId } from "../../utils/routeUtils";
+import { generatePDF } from "../../utils/generatePDF";
+import { API_BASE } from "../../api/config";
 
 const BookNow = () => {
   const location = useLocation();
@@ -24,11 +26,15 @@ const BookNow = () => {
   const [email, setEmail] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [payment, setPayment] = useState("online");
+  const [selectedSeat, setSelectedSeat] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [bookingRef, setBookingRef] = useState(null);
+  const [bookingData, setBookingData] = useState(null);
 
-  // Clean up sessionStorage on unmount
+  // Mock booked seats (in production, fetch from API based on train + date)
+  const [bookedSeats] = useState(["1A", "1B", "2C", "3D", "5A", "7B"]);
+
+  // Clean up sessionStorage on unmount if booking succeeded
   useEffect(() => {
     return () => {
       if (bookingSuccess) sessionStorage.removeItem("selectedTrain");
@@ -38,6 +44,12 @@ const BookNow = () => {
   const handleBooking = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (!selectedSeat) {
+      alert("Please select a seat before confirming your booking.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const bookingDetails = {
@@ -49,12 +61,11 @@ const BookNow = () => {
       destination: train.to,
       date: train.date || new Date().toISOString(),
       time: train.time || "",
-      seat: "",
+      seat: selectedSeat,
       price: parseFloat(String(train.price).replace(/[^0-9.]/g, "")) || 0,
-      paymentStatus: "Pending",
+      paymentStatus: payment === "online" ? "Pending" : "Pay at Station",
       status: "Active",
       trainId: train.trainId || 1,
-      payment,
     };
 
     try {
@@ -70,7 +81,7 @@ const BookNow = () => {
         throw new Error(result.error || "Failed to save booking");
       }
 
-      setBookingRef(result.id);
+      setBookingData(result);
       setBookingSuccess(true);
       sessionStorage.removeItem("selectedTrain");
     } catch (error) {
@@ -78,6 +89,12 @@ const BookNow = () => {
       alert(`There was an error saving your booking: ${error.message}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadTicket = () => {
+    if (bookingData) {
+      generatePDF(bookingData);
     }
   };
 
@@ -97,30 +114,79 @@ const BookNow = () => {
   }
 
   // ─── Booking success screen ───
-  if (bookingSuccess) {
+  if (bookingSuccess && bookingData) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8 text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-2xl font-bold mb-2">Booking Confirmed!</h1>
-          <p className="text-gray-500 mb-1">Booking reference: <strong>#{bookingRef}</strong></p>
-          <p className="text-gray-500 mb-1">{train.from} → {train.to}</p>
-          <p className="text-gray-500 mb-6">{train.time} | {train.price}</p>
-          <p className="text-sm text-gray-400 mb-6">
-            A confirmation will be sent to <strong>{email}</strong>
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            className="w-full py-3 bg-[#12172b] text-white rounded-lg font-semibold hover:bg-blue-950 transition"
-          >
-            Back to Home
-          </button>
+        <div className="w-full max-w-lg bg-white shadow-lg rounded-xl p-8">
+          {/* Success Icon */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Booking Confirmed!</h1>
+            <p className="text-gray-500">Your journey is ready</p>
+          </div>
+
+          {/* Booking Details */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Booking Reference:</span>
+              <span className="font-semibold">#{bookingData.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Route:</span>
+              <span className="font-semibold">{train.from} → {train.to}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Date & Time:</span>
+              <span className="font-semibold">
+                {new Date(bookingData.date).toLocaleDateString()} at {train.time}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Seat:</span>
+              <span className="font-semibold text-blue-600">{selectedSeat}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Price:</span>
+              <span className="font-semibold">{train.price}</span>
+            </div>
+          </div>
+
+          {/* Confirmation Email Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+            <p className="text-sm text-blue-900">
+              📧 A confirmation email has been sent to <strong>{email}</strong>
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={handleDownloadTicket}
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Download Ticket (PDF)
+            </button>
+
+            <button
+              onClick={() => navigate("/")}
+              className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ✅ Use shared utility instead of inline ternary chain
+  // ─── Booking Form ───
   const cityKey = getCityFromTrainId(train.train);
   const stationCoords = cityKey ? stationCoordinatesByCity[cityKey] : {};
 
@@ -136,6 +202,7 @@ const BookNow = () => {
           <strong>Time:</strong> {train.time} | <strong>Price:</strong> {train.price}
         </p>
 
+        {/* Live Tracker */}
         <div className="mb-8">
           <LiveTracker
             trainId={train.train.toLowerCase().replace(/\s+/g, "-")}
@@ -145,6 +212,17 @@ const BookNow = () => {
           />
         </div>
 
+        {/* Seat Selection */}
+        <div className="mb-8">
+          <SeatSelector
+            totalSeats={60}
+            bookedSeats={bookedSeats}
+            selectedSeat={selectedSeat}
+            onSeatSelect={setSelectedSeat}
+          />
+        </div>
+
+        {/* Booking Form */}
         <form onSubmit={handleBooking} className="grid grid-cols-1 gap-6">
           <div>
             <label className="block font-medium">Full Name</label>
@@ -183,28 +261,38 @@ const BookNow = () => {
             <label className="block font-medium">Payment Method</label>
             <div className="flex items-center gap-6 mt-2">
               <label className="flex items-center gap-2">
-                <input type="radio" name="payment" value="online"
-                  checked={payment === "online"} onChange={(e) => setPayment(e.target.value)} />
-                Online
+                <input
+                  type="radio"
+                  name="payment"
+                  value="online"
+                  checked={payment === "online"}
+                  onChange={(e) => setPayment(e.target.value)}
+                />
+                Online Payment
               </label>
               <label className="flex items-center gap-2">
-                <input type="radio" name="payment" value="in-person"
-                  checked={payment === "in-person"} onChange={(e) => setPayment(e.target.value)} />
-                In Person
+                <input
+                  type="radio"
+                  name="payment"
+                  value="in-person"
+                  checked={payment === "in-person"}
+                  onChange={(e) => setPayment(e.target.value)}
+                />
+                Pay at Station
               </label>
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !selectedSeat}
             className={`w-full py-3 rounded-lg font-semibold transition mt-4
-              ${isSubmitting
+              ${isSubmitting || !selectedSeat
                 ? "bg-gray-400 cursor-not-allowed text-white"
                 : "bg-[#12172b] text-white hover:bg-blue-950"
               }`}
           >
-            {isSubmitting ? "Processing..." : "Confirm Booking"}
+            {isSubmitting ? "Processing..." : selectedSeat ? "Confirm Booking" : "Select a seat to continue"}
           </button>
         </form>
       </div>

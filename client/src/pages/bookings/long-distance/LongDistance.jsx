@@ -1,141 +1,104 @@
 // client/src/pages/bookings/long-distance/LongDistance.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from "../../../api/config"; // ✅ Centralised URL
+import { API_BASE } from "../../../api/config";
+
+// ✅ Correct import paths (three ../ to go up from long-distance folder)
+import RouteSelector from "../../../components/booking/RouteSelector";
+import RouteAnimation from "../../../components/booking/RouteAnimation";
 
 const LongDistance = () => {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [date, setDate] = useState("");
-  const [passengers, setPassengers] = useState(1);
-  const [results, setResults] = useState([]);
-  const [hasSearched, setHasSearched] = useState(false); // ✅ Track whether a search was made
-  const [isSearching, setIsSearching] = useState(false);
-
   const navigate = useNavigate();
+  
+  // Step 1: Route selection
+  const [selectedRoute, setSelectedRoute] = useState(null);
+  const [showRouteSelector, setShowRouteSelector] = useState(true);
+  
+  // Step 2: Date/time/results (not built yet)
+  const [date, setDate] = useState("");
+  const [results, setResults] = useState([]);
+  
+  // Animation state
+  const [showAnimation, setShowAnimation] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    setIsSearching(true);
-    setHasSearched(false);
-
-    try {
-      const response = await fetch(
-        // ✅ passengers now included in the query
-        `${API_BASE}/api/search?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}&passengers=${passengers}`
-      );
-      const data = await response.json();
-      setResults(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Search failed", err);
-      setResults([]);
-    } finally {
-      setHasSearched(true);
-      setIsSearching(false);
-    }
+  const handleRouteSelect = (route) => {
+    console.log("Route selected:", route);
+    setSelectedRoute(route);
+    setShowRouteSelector(false);
+    
+    // TODO: Next step would be date/time picker
+    // For now, just navigate to a placeholder or show a message
   };
 
   return (
-    <div className="min-h-screen bg-[#12172b] text-white px-4 py-10">
-      <h1 className="text-center text-3xl font-semibold mb-10">
-        🚆 Long-Distance Train Booking
-      </h1>
-
-      {/* Search Form */}
-      <form
-        onSubmit={handleSearch}
-        className="max-w-md mx-auto bg-white text-black p-6 rounded-2xl shadow-lg"
-      >
-        <label className="block mb-4">
-          <span className="font-medium">From:</span>
-          <input
-            type="text"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            placeholder="e.g. Cape Town"
-            required
-            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
-          />
-        </label>
-
-        <label className="block mb-4">
-          <span className="font-medium">To:</span>
-          <input
-            type="text"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder="e.g. Johannesburg"
-            required
-            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
-          />
-        </label>
-
-        <label className="block mb-4">
-          <span className="font-medium">Travel Date:</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
-          />
-        </label>
-
-        <label className="block mb-6">
-          <span className="font-medium">Passengers:</span>
-          <input
-            type="number"
-            value={passengers}
-            onChange={(e) => setPassengers(Number(e.target.value))}
-            min="1"
-            max="10"
-            className="w-full mt-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={isSearching}
-          className={`w-full py-3 font-semibold rounded-lg transition shadow-md text-white
-            ${isSearching ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}`}
-        >
-          {isSearching ? "Searching..." : "Search Trains"}
-        </button>
-      </form>
-
-      {/* Results */}
-      {hasSearched && (
-        <div className="max-w-xl mx-auto mt-10">
-          {results.length > 0 ? (
-            <div className="bg-white text-black p-6 rounded-2xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
-              <ul>
-                {results.map((train) => (
-                  <li key={train.id} className="border-b last:border-none py-4">
-                    <p className="font-semibold text-lg">{train.train}</p>
-                    <p>Departure: {train.time}</p>
-                    <p>Price: {train.price}</p>
-                    {passengers > 1 && (
-                      <p className="text-sm text-gray-500">for {passengers} passengers</p>
-                    )}
-                    <button
-                      onClick={() => navigate("/book", { state: { train } })}
-                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                    >
-                      Book Now
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            // ✅ Empty state — previously nothing was shown
-            <div className="text-center py-8 opacity-70">
-              <p className="text-lg">No trains found for this route.</p>
-              <p className="text-sm mt-2">Try a different date or destination.</p>
-            </div>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      {/* Step 1: Route Selector */}
+      {showRouteSelector && (
+        <div className="py-10">
+          <RouteSelector onRouteSelect={handleRouteSelect} />
         </div>
+      )}
+
+      {/* Step 2: Show selected route and next steps */}
+      {!showRouteSelector && selectedRoute && (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 className="text-2xl font-bold mb-4">Route Selected</h2>
+            <p className="mb-2">
+              <strong>From:</strong> {selectedRoute.from}
+            </p>
+            <p className="mb-2">
+              <strong>To:</strong> {selectedRoute.to}
+            </p>
+            <p className="mb-2">
+              <strong>Distance:</strong> ~{selectedRoute.distance} km
+            </p>
+            <p className="mb-4">
+              <strong>Duration:</strong> ~{selectedRoute.duration} hours
+            </p>
+
+            <button
+              onClick={() => setShowRouteSelector(true)}
+              className="px-4 py-2 bg-gray-200 rounded mr-4 hover:bg-gray-300"
+            >
+              ← Change Route
+            </button>
+
+            <button
+              onClick={() => setShowAnimation(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Preview Journey Animation
+            </button>
+          </div>
+
+          {/* TODO: Add date/time picker here */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <p className="text-blue-900">
+              🚧 Date/Time selection coming next!
+            </p>
+            <p className="text-sm text-blue-700 mt-2">
+              For now, you can preview the route animation above.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Route Animation (plays on demand or after booking) */}
+      {showAnimation && selectedRoute && (
+        <RouteAnimation
+          route={{
+            from: selectedRoute.from,
+            to: selectedRoute.to,
+            distance: selectedRoute.distance,
+            duration: selectedRoute.duration,
+            arrivalTime: "22:00", // TODO: Calculate from actual schedule
+          }}
+          onComplete={() => {
+            setShowAnimation(false);
+            alert("Animation complete! This would normally go to confirmation.");
+          }}
+        />
       )}
     </div>
   );

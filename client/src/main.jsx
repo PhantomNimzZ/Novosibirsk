@@ -10,6 +10,8 @@ import BookNow from './pages/bookings/BookNow.jsx';
 import CommuterCity from './pages/bookings/commuter/CommuterCity.jsx';
 import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
 
+import RouteSelector from "./components/booking/RouteSelector";
+
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 
@@ -34,6 +36,13 @@ root.render(
         <Route path="/book" element={<BookNow />} />
         <Route path="/commuter/:cityId" element={<CommuterCity />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+
+        {/* Test route for RouteSelector */}
+        <Route path="/test-selector" element={
+          <div style={{ padding: "2rem", background: "#f5f5f5", minHeight: "100vh" }}>
+            <RouteSelector onRouteSelect={(route) => console.log(route)} />
+          </div>
+        } />
 
         {/* Admin Routes (Protected) */}
         <Route element={<ProtectedRoute />}>

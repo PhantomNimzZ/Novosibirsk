@@ -1,90 +1,175 @@
 // client/src/pages/bookings/long-distance/LongDistance.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_BASE } from "../../../api/config";
-
-// ✅ Correct import paths (three ../ to go up from long-distance folder)
 import RouteSelector from "../../../components/booking/RouteSelector";
+import DateTimePicker from "../../../components/booking/DateTimePicker";
+import TrainResults from "../../../components/booking/TrainResults";
 import RouteAnimation from "../../../components/booking/RouteAnimation";
+import { colors, spacing } from "../../../styles/tokens";
 
+/**
+ * Complete Long-Distance Booking Flow
+ * Step 1: Select Route (interactive map)
+ * Step 2: Select Date & Time
+ * Step 3: View Available Trains
+ * Step 4: Select Train → Navigate to seat selection
+ */
 const LongDistance = () => {
   const navigate = useNavigate();
+
+  // Flow state
+  const [step, setStep] = useState(1); // 1: Route, 2: DateTime, 3: TrainResults
   
-  // Step 1: Route selection
+  // Data state
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [showRouteSelector, setShowRouteSelector] = useState(true);
-  
-  // Step 2: Date/time/results (not built yet)
-  const [date, setDate] = useState("");
-  const [results, setResults] = useState([]);
+  const [selectedDateTime, setSelectedDateTime] = useState(null);
+  const [selectedTrain, setSelectedTrain] = useState(null);
   
   // Animation state
   const [showAnimation, setShowAnimation] = useState(false);
 
+  // Step 1: Route Selection
   const handleRouteSelect = (route) => {
     console.log("Route selected:", route);
     setSelectedRoute(route);
-    setShowRouteSelector(false);
+    setStep(2);
     
-    // TODO: Next step would be date/time picker
-    // For now, just navigate to a placeholder or show a message
+    // Smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Step 2: Date/Time Selection
+  const handleDateTimeSelect = (dateTime) => {
+    console.log("Date/Time selected:", dateTime);
+    setSelectedDateTime(dateTime);
+    setStep(3);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Step 3: Train Selection
+  const handleTrainSelect = (train) => {
+    console.log("Train selected:", train);
+    setSelectedTrain(train);
+    
+    // Play route animation
+    setShowAnimation(true);
+  };
+
+  // After animation completes
+  const handleAnimationComplete = () => {
+    setShowAnimation(false);
+    
+    // Navigate to seat selection with all booking data
+    navigate("/book", {
+      state: {
+        train: {
+          train: selectedTrain.name,
+          trainNumber: selectedTrain.number,
+          trainId: selectedTrain.id,
+          from: selectedRoute.from,
+          to: selectedRoute.to,
+          date: selectedDateTime.date,
+          time: selectedDateTime.time,
+          price: `R${selectedTrain.price}`,
+        },
+      },
+    });
+  };
+
+  // Reset to step
+  const goToStep = (targetStep) => {
+    setStep(targetStep);
+    if (targetStep === 1) {
+      setSelectedRoute(null);
+      setSelectedDateTime(null);
+      setSelectedTrain(null);
+    } else if (targetStep === 2) {
+      setSelectedDateTime(null);
+      setSelectedTrain(null);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Step 1: Route Selector */}
-      {showRouteSelector && (
-        <div className="py-10">
+    <div style={styles.container}>
+      {/* Progress Indicator */}
+      <div style={styles.progressBar}>
+        <div style={styles.progressTrack}>
+          <div
+            style={{
+              ...styles.progressFill,
+              width: `${(step / 3) * 100}%`,
+            }}
+          />
+        </div>
+        <div style={styles.progressSteps}>
+          <div style={{ ...styles.progressStep, ...(step >= 1 ? styles.progressStepActive : {}) }}>
+            <div style={styles.progressStepNumber}>1</div>
+            <div style={styles.progressStepLabel}>Route</div>
+          </div>
+          <div style={{ ...styles.progressStep, ...(step >= 2 ? styles.progressStepActive : {}) }}>
+            <div style={styles.progressStepNumber}>2</div>
+            <div style={styles.progressStepLabel}>Date & Time</div>
+          </div>
+          <div style={{ ...styles.progressStep, ...(step >= 3 ? styles.progressStepActive : {}) }}>
+            <div style={styles.progressStepNumber}>3</div>
+            <div style={styles.progressStepLabel}>Select Train</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Step Content */}
+      <div style={styles.stepContent}>
+        {/* Step 1: Route Selection */}
+        {step === 1 && (
           <RouteSelector onRouteSelect={handleRouteSelect} />
-        </div>
-      )}
+        )}
 
-      {/* Step 2: Show selected route and next steps */}
-      {!showRouteSelector && selectedRoute && (
-        <div className="max-w-4xl mx-auto p-6">
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">Route Selected</h2>
-            <p className="mb-2">
-              <strong>From:</strong> {selectedRoute.from}
-            </p>
-            <p className="mb-2">
-              <strong>To:</strong> {selectedRoute.to}
-            </p>
-            <p className="mb-2">
-              <strong>Distance:</strong> ~{selectedRoute.distance} km
-            </p>
-            <p className="mb-4">
-              <strong>Duration:</strong> ~{selectedRoute.duration} hours
-            </p>
+        {/* Step 2: Date & Time Selection */}
+        {step === 2 && selectedRoute && (
+          <div>
+            {/* Breadcrumb */}
+            <div style={styles.breadcrumb}>
+              <button style={styles.breadcrumbLink} onClick={() => goToStep(1)}>
+                ← Change Route
+              </button>
+              <span style={styles.breadcrumbCurrent}>
+                {selectedRoute.from} → {selectedRoute.to}
+              </span>
+            </div>
 
-            <button
-              onClick={() => setShowRouteSelector(true)}
-              className="px-4 py-2 bg-gray-200 rounded mr-4 hover:bg-gray-300"
-            >
-              ← Change Route
-            </button>
-
-            <button
-              onClick={() => setShowAnimation(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Preview Journey Animation
-            </button>
+            <DateTimePicker
+              route={selectedRoute}
+              onSelect={handleDateTimeSelect}
+            />
           </div>
+        )}
 
-          {/* TODO: Add date/time picker here */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <p className="text-blue-900">
-              🚧 Date/Time selection coming next!
-            </p>
-            <p className="text-sm text-blue-700 mt-2">
-              For now, you can preview the route animation above.
-            </p>
+        {/* Step 3: Train Results */}
+        {step === 3 && selectedRoute && selectedDateTime && (
+          <div>
+            {/* Breadcrumb */}
+            <div style={styles.breadcrumb}>
+              <button style={styles.breadcrumbLink} onClick={() => goToStep(1)}>
+                ← Change Route
+              </button>
+              <span style={styles.breadcrumbSeparator}>|</span>
+              <button style={styles.breadcrumbLink} onClick={() => goToStep(2)}>
+                Change Date/Time
+              </button>
+            </div>
+
+            <TrainResults
+              route={selectedRoute}
+              dateTime={selectedDateTime}
+              onSelectTrain={handleTrainSelect}
+            />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Route Animation (plays on demand or after booking) */}
+      {/* Route Animation Overlay */}
       {showAnimation && selectedRoute && (
         <RouteAnimation
           route={{
@@ -92,16 +177,105 @@ const LongDistance = () => {
             to: selectedRoute.to,
             distance: selectedRoute.distance,
             duration: selectedRoute.duration,
-            arrivalTime: "22:00", // TODO: Calculate from actual schedule
+            arrivalTime: selectedDateTime?.time || "22:00",
           }}
-          onComplete={() => {
-            setShowAnimation(false);
-            alert("Animation complete! This would normally go to confirmation.");
-          }}
+          onComplete={handleAnimationComplete}
         />
       )}
     </div>
   );
+};
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: colors.neutral.gray100,
+  },
+  progressBar: {
+    background: colors.neutral.white,
+    padding: spacing.lg,
+    borderBottom: `1px solid ${colors.neutral.gray300}`,
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  },
+  progressTrack: {
+    width: '100%',
+    height: '4px',
+    background: colors.neutral.gray300,
+    borderRadius: '2px',
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+  },
+  progressFill: {
+    height: '100%',
+    background: colors.primary.blue,
+    transition: 'width 0.5s ease',
+    borderRadius: '2px',
+  },
+  progressSteps: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    maxWidth: '600px',
+    margin: '0 auto',
+  },
+  progressStep: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: spacing.xs,
+    opacity: 0.4,
+    transition: 'opacity 0.3s ease',
+  },
+  progressStepActive: {
+    opacity: 1,
+  },
+  progressStepNumber: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    background: colors.primary.blue,
+    color: colors.neutral.white,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 600,
+  },
+  progressStepLabel: {
+    fontSize: '12px',
+    color: colors.neutral.gray700,
+    textAlign: 'center',
+  },
+  stepContent: {
+    paddingTop: spacing.xl,
+    paddingBottom: spacing['3xl'],
+  },
+  breadcrumb: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: `${spacing.lg} ${spacing.xl}`,
+    maxWidth: '1200px',
+    margin: '0 auto',
+    fontSize: '14px',
+  },
+  breadcrumbLink: {
+    background: 'none',
+    border: 'none',
+    color: colors.primary.blue,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    padding: 0,
+    fontSize: '14px',
+  },
+  breadcrumbSeparator: {
+    color: colors.neutral.gray500,
+  },
+  breadcrumbCurrent: {
+    color: colors.neutral.gray700,
+    fontWeight: 600,
+  },
 };
 
 export default LongDistance;

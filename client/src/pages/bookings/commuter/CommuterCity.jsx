@@ -27,7 +27,7 @@ const CommuterCity = () => {
     const toIndex = stationNames.indexOf(toStation);
     const stops = Math.abs(toIndex - fromIndex);
     
-    return Math.max(15, stops * 10); // Minimum R15, R10 per stop
+    return Math.max(15, stops * 10);
   };
 
   const currentFare = calculateFare(from, to);
@@ -36,18 +36,18 @@ const CommuterCity = () => {
     try {
       const bookingPayload = {
         passengerName: formData.name,
-        email: "commuter@prasa.co.za", // Default for commuter
-        idNumber: "N/A", // Not required for commuter
+        email: "commuter@prasa.co.za",
+        idNumber: "N/A",
         trainNumber: `Commuter-${cityId}`,
         departure: formData.from,
         destination: formData.to,
         date: new Date().toISOString(),
-        time: "Any", // Commuter trains run frequently
-        seat: "General Seating", // No assigned seats
+        time: "Any",
+        seat: "General Seating",
         price: formData.fare,
         paymentStatus: formData.payment === "mobile" ? "Pending" : "Cash",
         status: "Active",
-        trainId: 1, // Generic commuter train ID
+        trainId: 1,
       };
 
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -62,7 +62,6 @@ const CommuterCity = () => {
 
       const result = await response.json();
 
-      // Set booking data for ticket display
       setBookingData({
         id: result.id,
         name: formData.name,
@@ -74,12 +73,10 @@ const CommuterCity = () => {
       });
 
       setBookingComplete(true);
-      
-      // Scroll to ticket
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Booking error:", error);
-      throw error; // Let the form component handle the error
+      throw error;
     }
   };
 
@@ -92,7 +89,6 @@ const CommuterCity = () => {
   };
 
   const handleDownloadTicket = () => {
-    // Simple ticket download (would generate proper QR code PDF in production)
     const ticketText = `
 PRASA Commuter Ticket
 ─────────────────────
@@ -133,77 +129,75 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
           />
         </div>
       ) : (
-        // Booking View
-        <div style={styles.contentGrid}>
-          {/* Left Column: Station Selection + Form */}
-          <div style={styles.leftColumn}>
-            {/* Station Selectors */}
-            <div style={styles.stationSelector}>
-              <h3 style={styles.sectionTitle}>Select Stations</h3>
-              
-              <div style={styles.selectField}>
-                <label style={styles.label}>From:</label>
-                <select
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  style={styles.select}
-                >
-                  <option value="">-- Select Station --</option>
-                  {stationNames.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.selectField}>
-                <label style={styles.label}>To:</label>
-                <select
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  style={styles.select}
-                >
-                  <option value="">-- Select Station --</option>
-                  {stationNames.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              {from && to && from !== to && (
-                <div style={styles.fareDisplay}>
-                  <span style={styles.fareLabel}>Fare:</span>
-                  <span style={styles.fareValue}>R{currentFare}</span>
-                </div>
-              )}
+        // Booking View - Mobile-First Layout
+        <div style={styles.contentWrapper}>
+          {/* Station Selection Card */}
+          <div style={styles.stationSelector}>
+            <h3 style={styles.sectionTitle}>Select Stations</h3>
+            
+            <div style={styles.selectField}>
+              <label style={styles.label}>From:</label>
+              <select
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                style={styles.select}
+              >
+                <option value="">-- Select Station --</option>
+                {stationNames.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Quick Booking Form (only shown when route selected) */}
+            <div style={styles.selectField}>
+              <label style={styles.label}>To:</label>
+              <select
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                style={styles.select}
+              >
+                <option value="">-- Select Station --</option>
+                {stationNames.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
             {from && to && from !== to && (
-              <QuickBookingForm
-                route={{ from, to }}
-                fare={currentFare}
-                onSubmit={handleBooking}
-              />
+              <div style={styles.fareDisplay}>
+                <span style={styles.fareLabel}>Fare:</span>
+                <span style={styles.fareValue}>R{currentFare}</span>
+              </div>
             )}
           </div>
 
-          {/* Right Column: Map */}
-          <div style={styles.rightColumn}>
+          {/* Map - Collapsible on Mobile */}
+          {from && to && from !== to && (
             <div style={styles.mapContainer}>
               <CityMapPreview cityId={cityId} />
             </div>
-            
-            <div style={styles.infoCard}>
-              <div style={styles.infoIcon}>ℹ️</div>
-              <div>
-                <strong>Service Info:</strong>
-                <ul style={styles.infoList}>
-                  <li>Trains every 30 minutes</li>
-                  <li>Valid for today only</li>
-                  <li>General seating (no seat assignment)</li>
-                  <li>Show ticket QR code at platform</li>
-                </ul>
-              </div>
+          )}
+
+          {/* Quick Booking Form */}
+          {from && to && from !== to && (
+            <QuickBookingForm
+              route={{ from, to }}
+              fare={currentFare}
+              onSubmit={handleBooking}
+            />
+          )}
+
+          {/* Service Info */}
+          <div style={styles.infoCard}>
+            <div style={styles.infoIcon}>ℹ️</div>
+            <div>
+              <strong>Service Info:</strong>
+              <ul style={styles.infoList}>
+                <li>Trains every 30 minutes</li>
+                <li>Valid for today only</li>
+                <li>General seating (no seat assignment)</li>
+                <li>Show ticket QR code at platform</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -216,79 +210,77 @@ const styles = {
   container: {
     minHeight: '100vh',
     background: colors.neutral.gray100,
-    padding: spacing.xl,
+    padding: 'clamp(0.75rem, 2vw, 1.5rem)', // Responsive padding
   },
   header: {
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
+    padding: '0 0.5rem',
   },
   title: {
-    fontSize: typography.scale['3xl'],
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)', // Responsive
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
-    margin: `0 0 ${spacing.sm} 0`,
+    margin: `0 0 ${spacing.xs} 0`,
   },
   subtitle: {
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 3vw, 1rem)', // Responsive
     color: colors.neutral.gray700,
     margin: 0,
   },
   successContainer: {
-    paddingTop: spacing['2xl'],
+    paddingTop: 'clamp(1rem, 3vw, 2rem)',
   },
-  contentGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-    gap: spacing.xl,
-    maxWidth: '1200px',
+  contentWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'clamp(1rem, 3vw, 1.5rem)',
+    maxWidth: '600px', // Constrain width on larger screens
     margin: '0 auto',
-  },
-  leftColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: spacing.xl,
-  },
-  rightColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: spacing.lg,
   },
   stationSelector: {
     background: colors.neutral.white,
     borderRadius: '16px',
-    padding: spacing.xl,
+    padding: 'clamp(1rem, 3vw, 1.5rem)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
   },
   sectionTitle: {
-    fontSize: typography.scale.xl,
+    fontSize: 'clamp(1.125rem, 4vw, 1.25rem)', // Responsive
     fontWeight: typography.weight.semibold,
     color: colors.neutral.black,
-    margin: `0 0 ${spacing.lg} 0`,
+    margin: `0 0 ${spacing.md} 0`,
   },
   selectField: {
-    marginBottom: spacing.md,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   label: {
     display: 'block',
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive
     fontWeight: typography.weight.medium,
     color: colors.neutral.black,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   select: {
     width: '100%',
-    padding: spacing.md,
+    padding: 'clamp(0.75rem, 2vw, 1rem)', // Touch-friendly padding
     border: `2px solid ${colors.neutral.gray300}`,
     borderRadius: '8px',
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive, min 14px for iOS
     cursor: 'pointer',
     outline: 'none',
     transition: 'border-color 0.3s ease',
     fontFamily: typography.fontFamily.body,
+    minHeight: '44px', // Touch-friendly
+    touchAction: 'manipulation',
+    appearance: 'none', // Remove default arrow
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 1rem center',
+    paddingRight: '2.5rem', // Space for arrow
   },
   fareDisplay: {
-    marginTop: spacing.lg,
-    padding: spacing.lg,
+    marginTop: 'clamp(0.75rem, 2vw, 1rem)',
+    padding: 'clamp(0.75rem, 3vw, 1rem)',
     background: colors.primary.pale,
     borderRadius: '12px',
     display: 'flex',
@@ -297,37 +289,39 @@ const styles = {
     border: `2px solid ${colors.primary.blue}`,
   },
   fareLabel: {
-    fontSize: typography.scale.lg,
+    fontSize: 'clamp(1rem, 3vw, 1.125rem)', // Responsive
     fontWeight: typography.weight.medium,
     color: colors.neutral.black,
   },
   fareValue: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)', // Responsive
     fontWeight: typography.weight.bold,
     color: colors.primary.blue,
   },
   mapContainer: {
     background: colors.neutral.white,
     borderRadius: '16px',
-    padding: spacing.md,
+    padding: 'clamp(0.5rem, 2vw, 1rem)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    maxHeight: '300px', // Limit height on mobile
+    overflow: 'hidden',
   },
   infoCard: {
     display: 'flex',
-    gap: spacing.md,
-    padding: spacing.lg,
+    gap: 'clamp(0.5rem, 2vw, 0.75rem)',
+    padding: 'clamp(0.75rem, 3vw, 1rem)',
     background: colors.primary.pale,
     border: `1px solid ${colors.primary.blue}`,
     borderRadius: '12px',
   },
   infoIcon: {
-    fontSize: typography.scale.xl,
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', // Responsive
     flexShrink: 0,
   },
   infoList: {
     margin: `${spacing.xs} 0 0 0`,
-    paddingLeft: spacing.lg,
-    fontSize: typography.scale.sm,
+    paddingLeft: 'clamp(1rem, 3vw, 1.25rem)',
+    fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', // Responsive
     color: colors.neutral.gray900,
     lineHeight: 1.6,
   },

@@ -3,14 +3,13 @@ import { useState } from "react";
 import { colors, typography, spacing } from "../../styles/tokens";
 
 /**
- * Date and Time Picker for Long-Distance Booking
+ * Date and Time Picker for Long-Distance Booking (Mobile-Responsive)
  * Shows a calendar for date selection and time slots for departure times
  */
 const DateTimePicker = ({ route, onSelect }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
 
-  // Generate next 60 days for booking
   const generateDates = () => {
     const dates = [];
     const today = new Date();
@@ -26,7 +25,6 @@ const DateTimePicker = ({ route, onSelect }) => {
 
   const availableDates = generateDates();
 
-  // Time slots (example - would come from API in production)
   const timeSlots = [
     { time: "06:00", label: "Early Morning", price: 350, available: 45 },
     { time: "09:30", label: "Morning", price: 420, available: 12 },
@@ -37,7 +35,7 @@ const DateTimePicker = ({ route, onSelect }) => {
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
-    setSelectedTime(null); // Reset time when date changes
+    setSelectedTime(null);
   };
 
   const handleTimeClick = (slot) => {
@@ -206,43 +204,48 @@ const styles = {
     width: '100%',
     maxWidth: '1000px',
     margin: '0 auto',
-    padding: spacing.xl,
+    padding: 'clamp(1rem, 3vw, 2rem)',
   },
   header: {
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 'clamp(1rem, 3vw, 2rem)',
   },
   title: {
-    fontSize: typography.scale['3xl'],
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.sm} 0`,
   },
   subtitle: {
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.75rem, 2.5vw, 1rem)',
     color: colors.neutral.gray700,
     margin: 0,
+    padding: '0 0.5rem',
   },
   section: {
-    marginBottom: spacing['2xl'],
+    marginBottom: 'clamp(1.5rem, 4vw, 2rem)',
   },
   sectionTitle: {
-    fontSize: typography.scale.xl,
+    fontSize: 'clamp(1.125rem, 4vw, 1.25rem)',
     fontWeight: typography.weight.semibold,
     color: colors.neutral.black,
-    marginBottom: spacing.lg,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+    padding: '0 0.5rem',
   },
   dateScroller: {
     display: 'flex',
-    gap: spacing.md,
+    gap: 'clamp(0.5rem, 2vw, 1rem)',
     overflowX: 'auto',
     paddingBottom: spacing.md,
     scrollbarWidth: 'thin',
     scrollbarColor: `${colors.primary.blue} ${colors.neutral.gray100}`,
+    WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+    scrollSnapType: 'x proximity', // Snap to cards
+    padding: '0 0.5rem 1rem',
   },
   dateCard: {
-    minWidth: '80px',
-    padding: spacing.md,
+    minWidth: 'clamp(70px, 15vw, 80px)', // Responsive width
+    padding: 'clamp(0.75rem, 2vw, 1rem)',
     background: colors.neutral.white,
     border: `2px solid ${colors.neutral.gray300}`,
     borderRadius: '12px',
@@ -250,6 +253,13 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     position: 'relative',
+    flexShrink: 0,
+    scrollSnapAlign: 'start', // Snap alignment
+    minHeight: '100px', // Consistent height
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    touchAction: 'manipulation', // Optimize touch
   },
   dateCardSelected: {
     background: colors.primary.blue,
@@ -262,17 +272,17 @@ const styles = {
     borderColor: colors.accent.orange,
   },
   dateDayName: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     opacity: 0.8,
-    marginBottom: spacing.xs,
+    marginBottom: '0.25rem',
   },
   dateDayNum: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     fontWeight: typography.weight.bold,
-    marginBottom: spacing.xs,
+    marginBottom: '0.25rem',
   },
   dateMonth: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     opacity: 0.8,
   },
   todayBadge: {
@@ -281,24 +291,30 @@ const styles = {
     right: '-8px',
     background: colors.accent.orange,
     color: colors.neutral.white,
-    fontSize: typography.scale.xs,
-    padding: `2px ${spacing.xs}`,
+    fontSize: '0.625rem',
+    padding: '2px 6px',
     borderRadius: '4px',
     fontWeight: typography.weight.semibold,
   },
   timeSlotsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: spacing.lg,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 160px), 1fr))', // Mobile-first
+    gap: 'clamp(0.75rem, 2vw, 1rem)',
+    padding: '0 0.5rem',
   },
   timeSlot: {
-    padding: spacing.lg,
+    padding: 'clamp(0.75rem, 3vw, 1rem)',
     background: colors.neutral.white,
     border: `2px solid ${colors.neutral.gray300}`,
     borderRadius: '12px',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    minHeight: '120px', // Consistent height
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    touchAction: 'manipulation',
   },
   timeSlotSelected: {
     background: colors.primary.pale,
@@ -307,24 +323,24 @@ const styles = {
     boxShadow: '0 8px 16px rgba(0, 102, 204, 0.2)',
   },
   timeSlotTime: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     fontWeight: typography.weight.bold,
     color: colors.primary.blue,
-    marginBottom: spacing.xs,
+    marginBottom: '0.25rem',
   },
   timeSlotLabel: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.neutral.gray700,
-    marginBottom: spacing.sm,
+    marginBottom: '0.5rem',
   },
   timeSlotPrice: {
-    fontSize: typography.scale.lg,
+    fontSize: 'clamp(1rem, 3vw, 1.125rem)',
     fontWeight: typography.weight.semibold,
     color: colors.neutral.black,
-    marginBottom: spacing.sm,
+    marginBottom: '0.5rem',
   },
   timeSlotSeats: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.semantic.success,
   },
   timeSlotSeatsLow: {
@@ -332,32 +348,36 @@ const styles = {
     fontWeight: typography.weight.semibold,
   },
   footer: {
-    marginTop: spacing['2xl'],
+    marginTop: 'clamp(1.5rem, 4vw, 2rem)',
+    padding: '0 0.5rem',
   },
   summaryCard: {
     background: colors.primary.pale,
     border: `2px solid ${colors.primary.blue}`,
     borderRadius: '12px',
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: 'clamp(0.75rem, 3vw, 1rem)',
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   summaryRow: {
     display: 'flex',
     justifyContent: 'space-between',
     padding: `${spacing.sm} 0`,
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+    gap: '1rem', // Prevent text collision
   },
   continueButton: {
     width: '100%',
-    padding: `${spacing.md} ${spacing.xl}`,
+    padding: 'clamp(0.75rem, 3vw, 1rem)',
     background: colors.primary.blue,
     color: colors.neutral.white,
     border: 'none',
     borderRadius: '12px',
-    fontSize: typography.scale.lg,
+    fontSize: 'clamp(1rem, 3vw, 1.125rem)',
     fontWeight: typography.weight.semibold,
     cursor: 'pointer',
     transition: 'all 0.3s ease',
+    minHeight: '44px', // Touch-friendly
+    touchAction: 'manipulation',
   },
 };
 

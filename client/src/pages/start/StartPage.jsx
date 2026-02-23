@@ -187,12 +187,20 @@ function StartPage() {
             transform: translateY(0);
           }
         }
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 768px) {
+          /* Reduce animation on mobile for performance */
+          .map-path, .route-line, .city-marker {
+            animation: none !important;
+          }
+        }
       `}</style>
     </div>
   );
 }
 
-// Styles object
+// Styles object with mobile-first responsive design
 const styles = {
   container: {
     position: 'relative',
@@ -231,67 +239,72 @@ const styles = {
     zIndex: 10,
     width: '100%',
     maxWidth: '1200px',
-    padding: spacing.xl,
+    padding: spacing.md, // Reduced for mobile
     transition: 'opacity 1s ease-out',
   },
   header: {
     textAlign: 'center',
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing.xl,
   },
   logoContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.sm,
+    flexWrap: 'wrap', // Wrap on very small screens
   },
   logoIcon: {
-    fontSize: typography.scale['4xl'],
+    fontSize: '2.5rem', // Fixed size for consistency
   },
   logo: {
-    fontSize: typography.scale['5xl'],
+    fontSize: 'clamp(2rem, 8vw, 3rem)', // Responsive font size
     fontWeight: typography.weight.bold,
     color: colors.neutral.white,
     margin: 0,
     letterSpacing: '0.1em',
   },
   tagline: {
-    fontSize: typography.scale.lg,
+    fontSize: 'clamp(0.875rem, 3vw, 1.125rem)', // Responsive
     color: colors.primary.pale,
     margin: 0,
     fontWeight: typography.weight.normal,
+    padding: '0 1rem', // Prevent edge touching
   },
   hero: {
     textAlign: 'center',
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing.xl,
+    padding: '0 1rem',
   },
   heroTitle: {
-    fontSize: typography.scale['4xl'],
+    fontSize: 'clamp(1.75rem, 6vw, 2.25rem)', // Responsive
     fontWeight: typography.weight.bold,
     color: colors.neutral.white,
-    margin: `0 0 ${spacing.md} 0`,
+    margin: `0 0 ${spacing.sm} 0`,
   },
   heroSubtitle: {
-    fontSize: typography.scale.xl,
+    fontSize: 'clamp(0.875rem, 3vw, 1.25rem)', // Responsive
     color: colors.primary.pale,
     margin: 0,
     fontWeight: typography.weight.normal,
   },
   cardContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: spacing.xl,
-    marginBottom: spacing['2xl'],
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', // Mobile-first grid
+    gap: spacing.lg,
+    marginBottom: spacing.xl,
+    padding: '0 0.5rem', // Small side padding
   },
   card: {
     background: colors.neutral.white,
     borderRadius: '20px',
-    padding: spacing.xl,
+    padding: spacing.lg, // Reduced slightly for mobile
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
     position: 'relative',
     overflow: 'hidden',
+    minHeight: '300px', // Ensure consistent height
   },
   cardLongDistance: {
     borderTop: `4px solid ${colors.primary.blue}`,
@@ -300,29 +313,29 @@ const styles = {
     borderTop: `4px solid ${colors.accent.orange}`,
   },
   cardIcon: {
-    fontSize: typography.scale['4xl'],
-    marginBottom: spacing.md,
+    fontSize: '2.5rem', // Fixed for consistency
+    marginBottom: spacing.sm,
   },
   cardTitle: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', // Responsive
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
-    margin: `0 0 ${spacing.sm} 0`,
+    margin: `0 0 ${spacing.xs} 0`,
   },
   cardDescription: {
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive
     color: colors.neutral.gray700,
-    margin: `0 0 ${spacing.lg} 0`,
+    margin: `0 0 ${spacing.md} 0`,
     lineHeight: 1.6,
   },
   cardRoutes: {
     display: 'flex',
     flexDirection: 'column',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   routeBadge: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', // Responsive
     color: colors.neutral.gray700,
     padding: `${spacing.xs} ${spacing.sm}`,
     background: colors.neutral.gray100,
@@ -333,45 +346,48 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    fontSize: typography.scale.lg,
+    fontSize: 'clamp(1rem, 3vw, 1.125rem)', // Responsive
     fontWeight: typography.weight.semibold,
     color: colors.primary.blue,
+    marginTop: 'auto', // Push to bottom
   },
   ctaText: {},
   ctaArrow: {
-    fontSize: typography.scale['2xl'],
+    fontSize: '1.5rem', // Fixed size
     transition: 'transform 0.3s ease',
   },
   features: {
     display: 'flex',
     justifyContent: 'center',
-    gap: spacing.lg,
+    gap: spacing.sm,
     flexWrap: 'wrap',
+    padding: '0 1rem',
   },
   featurePill: {
     display: 'flex',
     alignItems: 'center',
-    gap: spacing.sm,
-    padding: `${spacing.sm} ${spacing.lg}`,
+    gap: spacing.xs,
+    padding: `${spacing.xs} ${spacing.md}`,
     background: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(10px)',
     borderRadius: '50px',
     color: colors.neutral.white,
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', // Responsive
     border: '1px solid rgba(255, 255, 255, 0.2)',
+    whiteSpace: 'nowrap', // Prevent text wrapping
   },
   featureIcon: {
-    fontSize: typography.scale.lg,
+    fontSize: '1rem', // Fixed size
   },
   featureText: {
     fontWeight: typography.weight.medium,
   },
   adminLink: {
     position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
+    bottom: spacing.md,
+    right: spacing.md,
     color: colors.neutral.white,
-    fontSize: typography.scale.sm,
+    fontSize: typography.scale.xs,
     textDecoration: 'none',
     opacity: 0.3,
     transition: 'opacity 0.3s ease',

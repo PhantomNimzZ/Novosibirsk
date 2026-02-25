@@ -1,9 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// server/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,37 +8,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Booking {
+  id             Int      @id @default(autoincrement())
+  passengerName  String
+  email          String
+  idNumber       String
+  trainNumber    String
+  departure      String
+  destination    String
+  date           String
+  time           String
+  seat           String
+  price          Float
+  paymentStatus  String
+  status         String
+  createdAt      DateTime @default(now())
+  trainId        Int
+  train          Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+}
 
 model Train {
-  id     Int     @id @default(autoincrement())
-  name   String
-  number String
-  seats  Int     @default(0)      // temporary default
-  price  Float   @default(0.0)    // temporary default
-  bookings Booking[]
+  id                 Int       @id @default(autoincrement())
+  train              String    // Train name (e.g., "Shosholoza Meyl", "Blue Train")
+  trainNumber        String    // Unique train number (e.g., "SM-001-1")
+  from               String
+  to                 String
+  time               String
+  date               String
+  price              Float
+  seats              Int       // Total seats available
+  class              String?   // Economy, Business, Luxury
+  amenities          String?   // Comma-separated list
+  distance           Int?      // Distance in km
+  duration           Int?      // Duration in hours
+  intermediateStops  String?   // JSON string of stops
+  bookings           Booking[]
 }
-
-
-
-
-model Booking {
-  id            Int      @id @default(autoincrement())
-  passengerName String
-  email         String
-  idNumber      String
-  trainNumber   String
-  departure     String
-  destination   String
-  date          DateTime
-  time          String
-  seat          String
-  price         Float
-  paymentStatus String
-  status        String
-  train         Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
-  trainId       Int
-
-  createdAt     DateTime @default(now())
-}
-
-

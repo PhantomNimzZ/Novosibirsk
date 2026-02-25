@@ -26,11 +26,11 @@ const DateTimePicker = ({ route, onSelect }) => {
   const availableDates = generateDates();
 
   const timeSlots = [
-    { time: "06:00", label: "Early Morning", price: 350, available: 45 },
-    { time: "09:30", label: "Morning", price: 420, available: 12 },
-    { time: "14:00", label: "Afternoon", price: 450, available: 28 },
-    { time: "18:30", label: "Evening", price: 400, available: 8 },
-    { time: "22:00", label: "Night", price: 380, available: 34 },
+    { time: "06:00", label: "Early Morning" },
+    { time: "09:30", label: "Morning" },
+    { time: "14:00", label: "Afternoon" },
+    { time: "18:30", label: "Evening" },
+    { time: "22:00", label: "Night" },
   ];
 
   const handleDateClick = (date) => {
@@ -155,13 +155,6 @@ const DateTimePicker = ({ route, onSelect }) => {
                 >
                   <div style={styles.timeSlotTime}>{slot.time}</div>
                   <div style={styles.timeSlotLabel}>{slot.label}</div>
-                  <div style={styles.timeSlotPrice}>R{slot.price}</div>
-                  <div style={{
-                    ...styles.timeSlotSeats,
-                    ...(isLowSeats ? styles.timeSlotSeatsLow : {}),
-                  }}>
-                    {slot.available} seats left
-                  </div>
                 </div>
               );
             })}
@@ -332,20 +325,6 @@ const styles = {
     fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.neutral.gray700,
     marginBottom: '0.5rem',
-  },
-  timeSlotPrice: {
-    fontSize: 'clamp(1rem, 3vw, 1.125rem)',
-    fontWeight: typography.weight.semibold,
-    color: colors.neutral.black,
-    marginBottom: '0.5rem',
-  },
-  timeSlotSeats: {
-    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
-    color: colors.semantic.success,
-  },
-  timeSlotSeatsLow: {
-    color: colors.semantic.warning,
-    fontWeight: typography.weight.semibold,
   },
   footer: {
     marginTop: 'clamp(1.5rem, 4vw, 2rem)',

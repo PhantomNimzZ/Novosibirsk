@@ -45,7 +45,7 @@ router.post("/", async (req, res) => {
         trainNumber: trainNumber || "",
         departure,
         destination,
-        date: new Date(date),
+        date: new Date(date).toISOString(),
         time: time || "",
         seat: seat || "",
         price: parseFloat(price),

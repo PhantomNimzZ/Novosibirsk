@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import LiveTracker from "../../components/maps/LiveTracker.jsx";
 import SeatSelector from "../../components/booking/SeatSelector.jsx";
-import { stationCoordinatesByCity } from "../../constants/stationCoordinates";
+import { stationCoordinatesByCity } from "../../constants/realStations";
 import { getCityFromTrainId } from "../../utils/routeUtils";
 import { generatePDF } from "../../utils/generatePDF";
 import { API_BASE } from "../../api/config";
@@ -205,7 +205,7 @@ const BookNow = () => {
         {/* Live Tracker */}
         <div className="mb-8">
           <LiveTracker
-            trainId={train.train.toLowerCase().replace(/\s+/g, "-")}
+            trainId={(train.train || train.trainNumber || "").toLowerCase().replace(/\s+/g, "-")}
             from={train.from}
             to={train.to}
             cityStations={stationCoords}

@@ -1,60 +1,48 @@
 // client/src/components/booking/TrainResults.jsx
+import { useState, useEffect } from "react";
 import { colors, typography, spacing } from "../../styles/tokens";
+import { API_BASE } from "../../api/config";
 
 /**
- * Train Results Display
+ * Train Results Display (Fetches Real Data from Database)
  * Shows available trains for the selected route, date, and time
- * Each result includes train details, amenities, and booking option
  */
-const TrainResults = ({ route, dateTime, trains, onSelectTrain }) => {
-  // Mock train data (would come from API in production)
-  const mockTrains = trains || [
-    {
-      id: 1,
-      name: "Shosholoza Meyl",
-      number: "SM001",
-      class: "Economy",
-      departure: dateTime.time,
-      arrival: calculateArrival(dateTime.time, route.duration),
-      duration: `${route.duration}h`,
-      price: dateTime.price,
-      seatsAvailable: 45,
-      amenities: ["WiFi", "Power Outlets", "Dining Car", "Luggage Storage"],
-      comfort: "Standard",
-    },
-    {
-      id: 2,
-      name: "Premier Classe",
-      number: "PC001",
-      class: "Business",
-      departure: dateTime.time,
-      arrival: calculateArrival(dateTime.time, route.duration),
-      duration: `${route.duration}h`,
-      price: dateTime.price * 1.5,
-      seatsAvailable: 18,
-      amenities: ["WiFi", "Power Outlets", "Premium Dining", "Lounge Access", "Extra Legroom"],
-      comfort: "Premium",
-    },
-    {
-      id: 3,
-      name: "Blue Train",
-      number: "BT001",
-      class: "Luxury",
-      departure: dateTime.time,
-      arrival: calculateArrival(dateTime.time, route.duration - 1), // Faster
-      duration: `${route.duration - 1}h`,
-      price: dateTime.price * 2.5,
-      seatsAvailable: 8,
-      amenities: ["WiFi", "Power Outlets", "Fine Dining", "Butler Service", "Cabin Suites", "Observation Car"],
-      comfort: "Luxury",
-    },
-  ];
+const TrainResults = ({ route, dateTime, onSelectTrain }) => {
+  const [trains, setTrains] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  function calculateArrival(departureTime, durationHours) {
-    const [hours, minutes] = departureTime.split(':').map(Number);
-    const arrivalHours = (hours + durationHours) % 24;
-    return `${String(arrivalHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  }
+  useEffect(() => {
+    const fetchTrains = async () => {
+      try {
+        setLoading(true);
+        // Fetch trains for this route from the database
+        const response = await fetch(`${API_BASE}/api/trains`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch trains");
+        }
+        
+        const allTrains = await response.json();
+        
+        // Filter trains that match the route and time
+        const matchingTrains = allTrains.filter(train => 
+          train.from === route.from && 
+          train.to === route.to &&
+          train.time === dateTime.time
+        );
+        
+        setTrains(matchingTrains);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching trains:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchTrains();
+  }, [route, dateTime]);
 
   const getClassColor = (trainClass) => {
     switch (trainClass) {
@@ -64,6 +52,29 @@ const TrainResults = ({ route, dateTime, trains, onSelectTrain }) => {
       default: return colors.neutral.gray700;
     }
   };
+
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loadingState}>
+          <div style={styles.spinner}>🚆</div>
+          <p style={styles.loadingText}>Finding available trains...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.errorState}>
+          <div style={styles.errorIcon}>⚠️</div>
+          <h3 style={styles.errorTitle}>Unable to load trains</h3>
+          <p style={styles.errorText}>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -80,107 +91,123 @@ const TrainResults = ({ route, dateTime, trains, onSelectTrain }) => {
       </div>
 
       {/* Train Cards */}
-      <div style={styles.trainsGrid}>
-        {mockTrains.map((train) => {
-          const isLowSeats = train.seatsAvailable < 10;
-          
-          return (
-            <div
-              key={train.id}
-              style={styles.trainCard}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-              }}
-            >
-              {/* Class Badge */}
-              <div style={{...styles.classBadge, background: getClassColor(train.class)}}>
-                {train.class}
-              </div>
-
-              {/* Train Header */}
-              <div style={styles.trainHeader}>
-                <div>
-                  <h3 style={styles.trainName}>{train.name}</h3>
-                  <p style={styles.trainNumber}>{train.number}</p>
-                </div>
-                <div style={styles.trainIcon}>🚆</div>
-              </div>
-
-              {/* Time Info */}
-              <div style={styles.timeInfo}>
-                <div style={styles.timeBlock}>
-                  <div style={styles.timeLabel}>Departure</div>
-                  <div style={styles.timeValue}>{train.departure}</div>
-                  <div style={styles.timeStation}>{route.from}</div>
-                </div>
-
-                <div style={styles.timeDuration}>
-                  <div style={styles.durationLine} />
-                  <div style={styles.durationText}>{train.duration}</div>
-                </div>
-
-                <div style={styles.timeBlock}>
-                  <div style={styles.timeLabel}>Arrival</div>
-                  <div style={styles.timeValue}>{train.arrival}</div>
-                  <div style={styles.timeStation}>{route.to}</div>
-                </div>
-              </div>
-
-              {/* Amenities */}
-              <div style={styles.amenities}>
-                {train.amenities.slice(0, 4).map((amenity, index) => (
-                  <span key={index} style={styles.amenityPill}>
-                    {amenity}
-                  </span>
-                ))}
-                {train.amenities.length > 4 && (
-                  <span style={styles.amenityMore}>
-                    +{train.amenities.length - 4} more
-                  </span>
-                )}
-              </div>
-
-              {/* Seats & Price */}
-              <div style={styles.footer}>
-                <div style={styles.seatsInfo}>
-                  <span style={{
-                    ...styles.seatsText,
-                    ...(isLowSeats ? styles.seatsTextLow : {}),
-                  }}>
-                    {train.seatsAvailable} seats left
-                  </span>
-                </div>
-                <div style={styles.priceBlock}>
-                  <div style={styles.priceLabel}>from</div>
-                  <div style={styles.priceValue}>R{train.price.toFixed(0)}</div>
-                </div>
-              </div>
-
-              {/* Book Button */}
-              <button
-                style={styles.bookButton}
-                onClick={() => onSelectTrain(train)}
+      {trains.length > 0 ? (
+        <div style={styles.trainsGrid}>
+          {trains.map((train) => {
+            const isLowSeats = train.seats < 20;
+            
+            // Parse amenities
+            const amenities = train.amenities ? train.amenities.split(", ") : [];
+            
+            return (
+              <div
+                key={train.id}
+                style={styles.trainCard}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = colors.primary.navy;
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = colors.primary.blue;
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
                 }}
               >
-                Select Train →
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                {/* Class Badge */}
+                <div style={{...styles.classBadge, background: getClassColor(train.class)}}>
+                  {train.class}
+                </div>
 
-      {/* Empty State (if no trains) */}
-      {mockTrains.length === 0 && (
+                {/* Train Header */}
+                <div style={styles.trainHeader}>
+                  <div>
+                    <h3 style={styles.trainName}>{train.train}</h3>
+                    <p style={styles.trainNumber}>{train.trainNumber}</p>
+                  </div>
+                  <div style={styles.trainIcon}>🚆</div>
+                </div>
+
+                {/* Distance & Duration */}
+                {train.distance && train.duration && (
+                  <div style={styles.metaInfo}>
+                    <span>{train.distance} km</span>
+                    <span style={styles.separator}>•</span>
+                    <span>{train.duration}h journey</span>
+                  </div>
+                )}
+
+                {/* Time Info */}
+                <div style={styles.timeInfo}>
+                  <div style={styles.timeBlock}>
+                    <div style={styles.timeLabel}>Departure</div>
+                    <div style={styles.timeValue}>{train.time}</div>
+                    <div style={styles.timeStation}>{train.from}</div>
+                  </div>
+
+                  <div style={styles.timeDuration}>
+                    <div style={styles.durationLine} />
+                    <div style={styles.durationText}>{train.duration}h</div>
+                  </div>
+
+                  <div style={styles.timeBlock}>
+                    <div style={styles.timeLabel}>Arrival</div>
+                    <div style={styles.timeValue}>
+                      {calculateArrival(train.time, train.duration)}
+                    </div>
+                    <div style={styles.timeStation}>{train.to}</div>
+                  </div>
+                </div>
+
+                {/* Amenities */}
+                {amenities.length > 0 && (
+                  <div style={styles.amenities}>
+                    {amenities.slice(0, 4).map((amenity, index) => (
+                      <span key={index} style={styles.amenityPill}>
+                        {amenity}
+                      </span>
+                    ))}
+                    {amenities.length > 4 && (
+                      <span style={styles.amenityMore}>
+                        +{amenities.length - 4} more
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Seats & Price */}
+                <div style={styles.footer}>
+                  <div style={styles.seatsInfo}>
+                    <span style={{
+                      ...styles.seatsText,
+                      ...(isLowSeats ? styles.seatsTextLow : {}),
+                    }}>
+                      {train.seats} seats left
+                    </span>
+                  </div>
+                  <div style={styles.priceBlock}>
+                    <div style={styles.priceLabel}>from</div>
+                    <div style={styles.priceValue}>R{Math.round(train.price)}</div>
+                  </div>
+                </div>
+
+                {/* Book Button */}
+                <button
+                  style={styles.bookButton}
+                  onClick={() => onSelectTrain(train)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.primary.navy;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = colors.primary.blue;
+                  }}
+                >
+                  Select Train →
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        // Empty State
         <div style={styles.emptyState}>
           <div style={styles.emptyIcon}>🚫</div>
           <h3 style={styles.emptyTitle}>No trains available</h3>
@@ -194,40 +221,79 @@ const TrainResults = ({ route, dateTime, trains, onSelectTrain }) => {
   );
 };
 
+// Helper function to calculate arrival time
+function calculateArrival(departureTime, durationHours) {
+  const [hours, minutes] = departureTime.split(':').map(Number);
+  const arrivalHours = (hours + durationHours) % 24;
+  return `${String(arrivalHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
 const styles = {
   container: {
     width: '100%',
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: spacing.xl,
+    padding: 'clamp(1rem, 3vw, 2rem)',
   },
   header: {
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: 'clamp(1.5rem, 4vw, 2rem)',
   },
   title: {
-    fontSize: typography.scale['3xl'],
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.sm} 0`,
   },
   routeInfo: {
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     color: colors.neutral.gray700,
   },
   separator: {
     margin: `0 ${spacing.sm}`,
     opacity: 0.5,
   },
+  loadingState: {
+    textAlign: 'center',
+    padding: spacing['3xl'],
+  },
+  spinner: {
+    fontSize: '4rem',
+    animation: 'spin 2s linear infinite',
+    display: 'inline-block',
+  },
+  loadingText: {
+    fontSize: typography.scale.lg,
+    color: colors.neutral.gray700,
+    marginTop: spacing.lg,
+  },
+  errorState: {
+    textAlign: 'center',
+    padding: spacing['3xl'],
+  },
+  errorIcon: {
+    fontSize: '4rem',
+    marginBottom: spacing.lg,
+  },
+  errorTitle: {
+    fontSize: typography.scale['2xl'],
+    fontWeight: typography.weight.bold,
+    color: colors.semantic.error,
+    margin: `0 0 ${spacing.sm} 0`,
+  },
+  errorText: {
+    fontSize: typography.scale.base,
+    color: colors.neutral.gray700,
+  },
   trainsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-    gap: spacing.xl,
+    gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+    gap: 'clamp(1rem, 3vw, 1.5rem)',
   },
   trainCard: {
     background: colors.neutral.white,
     borderRadius: '16px',
-    padding: spacing.xl,
+    padding: 'clamp(1rem, 3vw, 1.5rem)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     transition: 'all 0.3s ease',
     position: 'relative',
@@ -239,7 +305,7 @@ const styles = {
     padding: `${spacing.xs} ${spacing.md}`,
     borderRadius: '20px',
     color: colors.neutral.white,
-    fontSize: typography.scale.xs,
+    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
     fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -248,84 +314,91 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   trainName: {
-    fontSize: typography.scale.xl,
+    fontSize: 'clamp(1.125rem, 4vw, 1.25rem)',
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.xs} 0`,
   },
   trainNumber: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.neutral.gray700,
     margin: 0,
   },
   trainIcon: {
-    fontSize: typography.scale['3xl'],
+    fontSize: 'clamp(2rem, 6vw, 3rem)',
+  },
+  metaInfo: {
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray700,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   timeInfo: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: 'clamp(0.75rem, 2vw, 1rem)',
     background: colors.neutral.gray100,
     borderRadius: '12px',
-    marginBottom: spacing.lg,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
+    gap: spacing.sm,
   },
   timeBlock: {
     textAlign: 'center',
+    flex: 1,
   },
   timeLabel: {
-    fontSize: typography.scale.xs,
+    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
     color: colors.neutral.gray700,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     marginBottom: spacing.xs,
   },
   timeValue: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     fontWeight: typography.weight.bold,
     color: colors.primary.blue,
     marginBottom: spacing.xs,
   },
   timeStation: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.neutral.gray700,
   },
   timeDuration: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    padding: `0 ${spacing.lg}`,
+    padding: `0 ${spacing.sm}`,
   },
   durationLine: {
-    width: '60px',
+    width: 'clamp(40px, 10vw, 60px)',
     height: '2px',
     background: colors.primary.blue,
     marginBottom: spacing.xs,
   },
   durationText: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.neutral.gray700,
     fontWeight: typography.weight.medium,
   },
   amenities: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   amenityPill: {
     padding: `${spacing.xs} ${spacing.sm}`,
     background: colors.primary.pale,
     borderRadius: '6px',
-    fontSize: typography.scale.xs,
+    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
     color: colors.primary.blue,
   },
   amenityMore: {
     padding: `${spacing.xs} ${spacing.sm}`,
-    fontSize: typography.scale.xs,
+    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
     color: colors.neutral.gray700,
     fontStyle: 'italic',
   },
@@ -333,7 +406,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 'clamp(0.75rem, 2vw, 1rem)',
   },
   seatsInfo: {
     display: 'flex',
@@ -341,7 +414,7 @@ const styles = {
     gap: spacing.xs,
   },
   seatsText: {
-    fontSize: typography.scale.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: colors.semantic.success,
     fontWeight: typography.weight.medium,
   },
@@ -352,44 +425,46 @@ const styles = {
     textAlign: 'right',
   },
   priceLabel: {
-    fontSize: typography.scale.xs,
+    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
     color: colors.neutral.gray700,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
   },
   priceValue: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
     fontWeight: typography.weight.bold,
     color: colors.primary.blue,
   },
   bookButton: {
     width: '100%',
-    padding: `${spacing.md} ${spacing.lg}`,
+    padding: 'clamp(0.75rem, 2vw, 1rem)',
     background: colors.primary.blue,
     color: colors.neutral.white,
     border: 'none',
     borderRadius: '10px',
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     fontWeight: typography.weight.semibold,
     cursor: 'pointer',
     transition: 'all 0.3s ease',
+    minHeight: '44px',
+    touchAction: 'manipulation',
   },
   emptyState: {
     textAlign: 'center',
     padding: spacing['3xl'],
   },
   emptyIcon: {
-    fontSize: '64px',
+    fontSize: '4rem',
     marginBottom: spacing.lg,
   },
   emptyTitle: {
-    fontSize: typography.scale['2xl'],
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.sm} 0`,
   },
   emptyText: {
-    fontSize: typography.scale.base,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     color: colors.neutral.gray700,
     maxWidth: '500px',
     margin: '0 auto',

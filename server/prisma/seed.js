@@ -1,54 +1,149 @@
 // server/prisma/seed.js
-// ✅ Fixed: ESM imports (package.json has "type": "module")
 import { PrismaClient } from "@prisma/client";
+import {
+  realRoutes,
+  realTrains,
+  basePricePerKm,
+  scheduleTemplates,
+} from "./realPRASAData.js";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Seed trains
-  const trains = [
-    { id: 1, name: "Blue Train", number: "BT001", seats: 100, price: 850 },
-    { id: 2, name: "Shosholoza Meyl", number: "SM001", seats: 200, price: 350 },
-    { id: 3, name: "Premier Classe", number: "PC001", seats: 80, price: 1200 },
-  ];
+  console.log("🚆 Seeding database with real PRASA data...");
 
-  for (const train of trains) {
-    await prisma.train.upsert({
-      where: { id: train.id },
-      update: {},
-      create: train,
-    });
+  // Clear existing data
+  await prisma.booking.deleteMany();
+  await prisma.train.deleteMany();
+  console.log("✅ Cleared existing data");
+
+  // Seed trains with real data
+  const trainRecords = [];
+
+  for (const route of realRoutes) {
+    for (const trainTemplate of realTrains) {
+      // Check if Blue Train is restricted to specific routes
+      if (trainTemplate.routeRestriction) {
+        const validRoute = trainTemplate.routeRestriction.some(
+          (station) =>
+            station === route.departure || station === route.destination
+        );
+        if (!validRoute) continue; // Skip Blue Train for non-Pretoria/Cape Town routes
+      }
+
+      // Create trains for each schedule time
+      for (const schedule of scheduleTemplates) {
+        const baseFare = Math.round(route.distance * basePricePerKm);
+        const finalFare = Math.round(baseFare * trainTemplate.priceMultiplier);
+
+        const train = await prisma.train.create({
+          data: {
+            train: trainTemplate.name,
+            trainNumber: `${trainTemplate.trainNumber}-${route.id}`,
+            from: route.departure,
+            to: route.destination,
+            time: schedule.time,
+            date: new Date().toISOString(),
+            price: finalFare,
+            seats: trainTemplate.totalSeats,
+            class: trainTemplate.class,
+            amenities: trainTemplate.amenities.join(", "),
+            distance: route.distance,
+            duration: route.duration,
+            intermediateStops: JSON.stringify(route.intermediateStops),
+          },
+        });
+
+        trainRecords.push(train);
+      }
+    }
   }
 
-  console.log("✅ Database seeded with trains");
+  console.log(`✅ Created ${trainRecords.length} train schedules`);
 
-  // Seed a sample booking
-  await prisma.booking.upsert({
-    where: { id: 1 },
-    update: {},
-    create: {
-      passengerName: "Nihal Harichurn",
-      email: "nihal@example.com",
-      idNumber: "9001015009087",
-      trainNumber: "BT001",
-      departure: "Cape Town",
-      destination: "Pretoria",
-      date: new Date("2025-09-15T08:00:00.000Z"),
-      time: "08:00",
-      seat: "12A",
-      price: 850,
+  // Create some sample bookings (for testing)
+  const sampleBookings = [
+    {
+      passengerName: "Thabo Mbeki",
+      email: "thabo@example.com",
+      idNumber: "7201015800082",
+      trainNumber: trainRecords[0].trainNumber,
+      departure: trainRecords[0].from,
+      destination: trainRecords[0].to,
+      date: new Date().toISOString(),
+      time: trainRecords[0].time,
+      seat: "1A",
+      price: trainRecords[0].price,
+      paymentStatus: "Paid",
+      status: "Active",
+      trainId: trainRecords[0].id,
+    },
+    {
+      passengerName: "Nomsa Dlamini",
+      email: "nomsa@example.com",
+      idNumber: "8505120700089",
+      trainNumber: trainRecords[1].trainNumber,
+      departure: trainRecords[1].from,
+      destination: trainRecords[1].to,
+      date: new Date().toISOString(),
+      time: trainRecords[1].time,
+      seat: "2B",
+      price: trainRecords[1].price,
+      paymentStatus: "Paid",
+      status: "Active",
+      trainId: trainRecords[1].id,
+    },
+    {
+      passengerName: "Sipho Nkosi",
+      email: "sipho@example.com",
+      idNumber: "9208153200087",
+      trainNumber: trainRecords[2].trainNumber,
+      departure: trainRecords[2].from,
+      destination: trainRecords[2].to,
+      date: new Date().toISOString(),
+      time: trainRecords[2].time,
+      seat: "3C",
+      price: trainRecords[2].price,
       paymentStatus: "Pending",
       status: "Active",
-      trainId: 1,
+      trainId: trainRecords[2].id,
     },
-  });
+  ];
 
-  console.log("✅ Database seeded with sample booking");
+  for (const booking of sampleBookings) {
+    await prisma.booking.create({ data: booking });
+  }
+
+  console.log(`✅ Created ${sampleBookings.length} sample bookings`);
+
+  // Display summary
+  console.log("\n📊 Database seeding complete!");
+  console.log("─────────────────────────────────────");
+  console.log(`Routes: ${realRoutes.length} long-distance routes`);
+  console.log(`Trains: ${trainRecords.length} scheduled services`);
+  console.log(`Train types: ${realTrains.length} (Economy, Business, Luxury)`);
+  console.log(`Bookings: ${sampleBookings.length} sample bookings`);
+  console.log("─────────────────────────────────────");
+
+  // Show some example fares
+  console.log("\n💰 Sample Fares:");
+  console.log(
+    `Cape Town → Johannesburg (1,532 km):`
+  );
+  console.log(`  • Economy: R${Math.round(1532 * basePricePerKm * 1.0)}`);
+  console.log(`  • Business: R${Math.round(1532 * basePricePerKm * 1.8)}`);
+  console.log(`  • Luxury: R${Math.round(1532 * basePricePerKm * 3.5)}`);
+  console.log(
+    `\nJohannesburg → Durban (690 km):`
+  );
+  console.log(`  • Economy: R${Math.round(690 * basePricePerKm * 1.0)}`);
+  console.log(`  • Business: R${Math.round(690 * basePricePerKm * 1.8)}`);
+  console.log("\n🚆 Ready to start booking!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Error seeding database:", e);
     process.exit(1);
   })
   .finally(async () => {

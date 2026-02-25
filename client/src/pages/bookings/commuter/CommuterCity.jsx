@@ -1,10 +1,17 @@
 // client/src/pages/bookings/commuter/CommuterCity.jsx
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CityMapPreview from "../../../components/maps/CityMapPreview";
 import QuickBookingForm from "../../../components/booking/QuickBookingForm";
 import QRTicket from "../../../components/booking/QRTicket";
-import { stationCoordinatesByCity } from "../../../constants/stationCoordinates";
+import { stationCoordinatesByCity } from "../../../constants/realStations";
+import {
+  getAllStations,
+  areOnSameLine,
+  getRoute,
+  findTransferRoute,
+  calculateRouteInfo,
+} from "../../../constants/metroLines";
 import { API_BASE } from "../../../api/config";
 import { colors, typography, spacing } from "../../../styles/tokens";
 
@@ -12,25 +19,70 @@ const CommuterCity = () => {
   const { cityId } = useParams();
 
   const cityStations = stationCoordinatesByCity[cityId] || {};
-  const stationNames = Object.keys(cityStations);
+  const allStations = getAllStations(cityId);
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [routeValidation, setRouteValidation] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState(null);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingData, setBookingData] = useState(null);
 
-  // Calculate fare based on number of stops (R10 per stop, R15 minimum)
-  const calculateFare = (fromStation, toStation) => {
-    if (!fromStation || !toStation) return 15;
-    
-    const fromIndex = stationNames.indexOf(fromStation);
-    const toIndex = stationNames.indexOf(toStation);
-    const stops = Math.abs(toIndex - fromIndex);
-    
-    return Math.max(15, stops * 10);
-  };
+  // Validate route whenever stations change
+  useEffect(() => {
+    if (!from || !to || from === to) {
+      setRouteValidation(null);
+      setSelectedRoute(null);
+      return;
+    }
 
-  const currentFare = calculateFare(from, to);
+    const validation = areOnSameLine(cityId, from, to);
+
+    if (validation.isDirectRoute) {
+      // Direct route on same line
+      const lineName = validation.sharedLines[0];
+      const route = getRoute(cityId, from, to, lineName);
+      const routeInfo = calculateRouteInfo(route);
+
+      setRouteValidation({
+        valid: true,
+        type: "direct",
+        lineName,
+        route,
+        ...routeInfo,
+      });
+      setSelectedRoute(route);
+    } else {
+      // Try to find transfer route
+      const transferRoute = findTransferRoute(cityId, from, to);
+
+      if (transferRoute) {
+        // Calculate total stops and fare
+        const leg1Info = calculateRouteInfo(transferRoute.legs[0].stations);
+        const leg2Info = calculateRouteInfo(transferRoute.legs[1].stations);
+        const totalStops = leg1Info.stops + leg2Info.stops;
+        const totalFare = Math.max(15, totalStops * 10);
+
+        setRouteValidation({
+          valid: true,
+          type: "transfer",
+          ...transferRoute,
+          stops: totalStops,
+          fare: totalFare,
+        });
+        setSelectedRoute([...transferRoute.legs[0].stations, ...transferRoute.legs[1].stations.slice(1)]);
+      } else {
+        // No route found
+        setRouteValidation({
+          valid: false,
+          type: "none",
+          fromLines: validation.station1Lines,
+          toLines: validation.station2Lines,
+        });
+        setSelectedRoute(null);
+      }
+    }
+  }, [from, to, cityId]);
 
   const handleBooking = async (formData) => {
     try {
@@ -85,6 +137,8 @@ const CommuterCity = () => {
     setBookingData(null);
     setFrom("");
     setTo("");
+    setRouteValidation(null);
+    setSelectedRoute(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -129,7 +183,7 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
           />
         </div>
       ) : (
-        // Booking View - Mobile-First Layout
+        // Booking View
         <div style={styles.contentWrapper}>
           {/* Station Selection Card */}
           <div style={styles.stationSelector}>
@@ -142,8 +196,8 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
                 onChange={(e) => setFrom(e.target.value)}
                 style={styles.select}
               >
-                <option value="">-- Select Station --</option>
-                {stationNames.map((s) => (
+                <option value="">-- Select Origin --</option>
+                {allStations.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
@@ -156,33 +210,107 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
                 onChange={(e) => setTo(e.target.value)}
                 style={styles.select}
               >
-                <option value="">-- Select Station --</option>
-                {stationNames.map((s) => (
+                <option value="">-- Select Destination --</option>
+                {allStations.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
-
-            {from && to && from !== to && (
-              <div style={styles.fareDisplay}>
-                <span style={styles.fareLabel}>Fare:</span>
-                <span style={styles.fareValue}>R{currentFare}</span>
-              </div>
-            )}
           </div>
 
-          {/* Map - Collapsible on Mobile */}
-          {from && to && from !== to && (
+          {/* Route Validation Messages */}
+          {routeValidation && (
+            <>
+              {routeValidation.valid && routeValidation.type === "direct" && (
+                <div style={styles.routeInfo}>
+                  <div style={styles.routeIcon}>✓</div>
+                  <div style={styles.routeDetails}>
+                    <div style={styles.routeTitle}>Direct Route Available</div>
+                    <div style={styles.routeMetaLine}>
+                      🚆 <strong>{routeValidation.lineName}</strong>
+                    </div>
+                    <div style={styles.routeMeta}>
+                      {from} → {routeValidation.route.slice(1, -1).join(" → ")} → {to}
+                    </div>
+                    <div style={styles.routeStats}>
+                      <span>{routeValidation.stops} stops</span>
+                      <span style={styles.statSeparator}>•</span>
+                      <span>~{routeValidation.stops * 5} minutes</span>
+                      <span style={styles.statSeparator}>•</span>
+                      <span style={styles.fareHighlight}>R{routeValidation.fare}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {routeValidation.valid && routeValidation.type === "transfer" && (
+                <div style={{...styles.routeInfo, ...styles.routeInfoTransfer}}>
+                  <div style={styles.routeIcon}>⚠️</div>
+                  <div style={styles.routeDetails}>
+                    <div style={styles.routeTitle}>Transfer Required</div>
+                    <div style={styles.transferLegs}>
+                      <div style={styles.transferLeg}>
+                        <span style={styles.transferLegNumber}>1</span>
+                        <strong>{routeValidation.legs[0].line}</strong>
+                        <div style={styles.transferLegRoute}>
+                          {routeValidation.legs[0].from} → {routeValidation.legs[0].to}
+                        </div>
+                      </div>
+                      <div style={styles.transferArrow}>↓ Transfer</div>
+                      <div style={styles.transferLeg}>
+                        <span style={styles.transferLegNumber}>2</span>
+                        <strong>{routeValidation.legs[1].line}</strong>
+                        <div style={styles.transferLegRoute}>
+                          {routeValidation.legs[1].from} → {routeValidation.legs[1].to}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={styles.routeStats}>
+                      <span>{routeValidation.stops} total stops</span>
+                      <span style={styles.statSeparator}>•</span>
+                      <span>~{routeValidation.stops * 5 + 10} minutes (inc. transfer)</span>
+                      <span style={styles.statSeparator}>•</span>
+                      <span style={styles.fareHighlight}>R{routeValidation.fare}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!routeValidation.valid && (
+                <div style={{...styles.routeInfo, ...styles.routeInfoError}}>
+                  <div style={styles.routeIcon}>✕</div>
+                  <div style={styles.routeDetails}>
+                    <div style={styles.routeTitle}>No Direct Route</div>
+                    <div style={styles.errorText}>
+                      <strong>{from}</strong> ({routeValidation.fromLines.join(", ")}) and{" "}
+                      <strong>{to}</strong> ({routeValidation.toLines.join(", ")}) are not connected.
+                    </div>
+                    <div style={styles.errorSuggestion}>
+                      Please choose stations on the same line or a route with a transfer point.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Map - Only show when route is valid */}
+          {routeValidation?.valid && selectedRoute && (
             <div style={styles.mapContainer}>
-              <CityMapPreview cityId={cityId} />
+              <CityMapPreview 
+                cityId={cityId} 
+                from={from} 
+                to={to} 
+                routeInfo={routeValidation}
+              />
             </div>
           )}
 
-          {/* Quick Booking Form */}
-          {from && to && from !== to && (
+          {/* Quick Booking Form - Only show when route is valid */}
+          {routeValidation?.valid && (
             <QuickBookingForm
               route={{ from, to }}
-              fare={currentFare}
+              fare={routeValidation.fare}
               onSubmit={handleBooking}
             />
           )}
@@ -193,10 +321,10 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
             <div>
               <strong>Service Info:</strong>
               <ul style={styles.infoList}>
-                <li>Trains every 30 minutes</li>
-                <li>Valid for today only</li>
-                <li>General seating (no seat assignment)</li>
-                <li>Show ticket QR code at platform</li>
+                <li>Trains run every 20-45 minutes</li>
+                <li>Tickets valid for today only</li>
+                <li>General seating (no reservations)</li>
+                <li>Show QR code at platform entrance</li>
               </ul>
             </div>
           </div>
@@ -210,7 +338,7 @@ const styles = {
   container: {
     minHeight: '100vh',
     background: colors.neutral.gray100,
-    padding: 'clamp(0.75rem, 2vw, 1.5rem)', // Responsive padding
+    padding: 'clamp(0.75rem, 2vw, 1.5rem)',
   },
   header: {
     textAlign: 'center',
@@ -218,13 +346,13 @@ const styles = {
     padding: '0 0.5rem',
   },
   title: {
-    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)', // Responsive
+    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
     fontWeight: typography.weight.bold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.xs} 0`,
   },
   subtitle: {
-    fontSize: 'clamp(0.875rem, 3vw, 1rem)', // Responsive
+    fontSize: 'clamp(0.875rem, 3vw, 1rem)',
     color: colors.neutral.gray700,
     margin: 0,
   },
@@ -235,7 +363,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 'clamp(1rem, 3vw, 1.5rem)',
-    maxWidth: '600px', // Constrain width on larger screens
+    maxWidth: '600px',
     margin: '0 auto',
   },
   stationSelector: {
@@ -245,7 +373,7 @@ const styles = {
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
   },
   sectionTitle: {
-    fontSize: 'clamp(1.125rem, 4vw, 1.25rem)', // Responsive
+    fontSize: 'clamp(1.125rem, 4vw, 1.25rem)',
     fontWeight: typography.weight.semibold,
     color: colors.neutral.black,
     margin: `0 0 ${spacing.md} 0`,
@@ -255,56 +383,129 @@ const styles = {
   },
   label: {
     display: 'block',
-    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     fontWeight: typography.weight.medium,
     color: colors.neutral.black,
     marginBottom: spacing.xs,
   },
   select: {
     width: '100%',
-    padding: 'clamp(0.75rem, 2vw, 1rem)', // Touch-friendly padding
+    padding: 'clamp(0.75rem, 2vw, 1rem)',
     border: `2px solid ${colors.neutral.gray300}`,
     borderRadius: '8px',
-    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive, min 14px for iOS
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     cursor: 'pointer',
     outline: 'none',
     transition: 'border-color 0.3s ease',
     fontFamily: typography.fontFamily.body,
-    minHeight: '44px', // Touch-friendly
+    minHeight: '44px',
     touchAction: 'manipulation',
-    appearance: 'none', // Remove default arrow
+    appearance: 'none',
     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'right 1rem center',
-    paddingRight: '2.5rem', // Space for arrow
+    paddingRight: '2.5rem',
   },
-  fareDisplay: {
-    marginTop: 'clamp(0.75rem, 2vw, 1rem)',
-    padding: 'clamp(0.75rem, 3vw, 1rem)',
-    background: colors.primary.pale,
-    borderRadius: '12px',
+  routeInfo: {
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    border: `2px solid ${colors.primary.blue}`,
+    gap: 'clamp(0.75rem, 2vw, 1rem)',
+    padding: 'clamp(1rem, 3vw, 1.25rem)',
+    background: colors.semantic.success + '15',
+    border: `2px solid ${colors.semantic.success}`,
+    borderRadius: '12px',
   },
-  fareLabel: {
-    fontSize: 'clamp(1rem, 3vw, 1.125rem)', // Responsive
-    fontWeight: typography.weight.medium,
+  routeInfoTransfer: {
+    background: colors.semantic.warning + '15',
+    border: `2px solid ${colors.semantic.warning}`,
+  },
+  routeInfoError: {
+    background: colors.semantic.error + '15',
+    border: `2px solid ${colors.semantic.error}`,
+  },
+  routeIcon: {
+    fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+    flexShrink: 0,
+  },
+  routeDetails: {
+    flex: 1,
+  },
+  routeTitle: {
+    fontSize: 'clamp(1rem, 3vw, 1.125rem)',
+    fontWeight: typography.weight.bold,
+    marginBottom: spacing.xs,
     color: colors.neutral.black,
   },
-  fareValue: {
-    fontSize: 'clamp(1.5rem, 5vw, 1.875rem)', // Responsive
+  routeMetaLine: {
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+    marginBottom: spacing.xs,
+    color: colors.neutral.gray900,
+  },
+  routeMeta: {
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray700,
+    marginBottom: spacing.sm,
+  },
+  routeStats: {
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray700,
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+  },
+  statSeparator: {
+    opacity: 0.5,
+  },
+  fareHighlight: {
     fontWeight: typography.weight.bold,
     color: colors.primary.blue,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+  },
+  transferLegs: {
+    marginBottom: spacing.sm,
+  },
+  transferLeg: {
+    padding: `${spacing.sm} 0`,
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+  },
+  transferLegNumber: {
+    display: 'inline-block',
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    background: colors.primary.blue,
+    color: colors.neutral.white,
+    textAlign: 'center',
+    lineHeight: '24px',
+    marginRight: spacing.sm,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    fontWeight: typography.weight.bold,
+  },
+  transferLegRoute: {
+    marginLeft: '36px',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray700,
+  },
+  transferArrow: {
+    marginLeft: '36px',
+    color: colors.neutral.gray700,
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    fontWeight: typography.weight.semibold,
+  },
+  errorText: {
+    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+    color: colors.neutral.gray900,
+    marginBottom: spacing.sm,
+  },
+  errorSuggestion: {
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray700,
+    fontStyle: 'italic',
   },
   mapContainer: {
     background: colors.neutral.white,
     borderRadius: '16px',
     padding: 'clamp(0.5rem, 2vw, 1rem)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    maxHeight: '300px', // Limit height on mobile
-    overflow: 'hidden',
   },
   infoCard: {
     display: 'flex',
@@ -315,13 +516,13 @@ const styles = {
     borderRadius: '12px',
   },
   infoIcon: {
-    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', // Responsive
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     flexShrink: 0,
   },
   infoList: {
     margin: `${spacing.xs} 0 0 0`,
     paddingLeft: 'clamp(1rem, 3vw, 1.25rem)',
-    fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)', // Responsive
+    fontSize: 'clamp(0.75rem, 2.5vw, 0.875rem)',
     color: colors.neutral.gray900,
     lineHeight: 1.6,
   },

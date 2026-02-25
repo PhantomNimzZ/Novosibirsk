@@ -2,8 +2,7 @@
 // ✅ Single source of truth for route-building logic
 // Previously duplicated in: LiveTracker.jsx, stationUtils.js, and routeUtils.js
 
-import { stationCoordinatesByCity } from "../constants/stationCoordinates";
-
+import { stationCoordinatesByCity } from "../constants/realStations";
 /**
  * Build an ordered array of coordinate points between two stations.
  * Works in both directions (forward and reverse).

@@ -4,7 +4,7 @@ import { colors, typography, spacing } from "../../styles/tokens";
 import { API_BASE } from "../../api/config";
 
 /**
- * Train Results Display (Fetches Real Data from Database)
+ * Train Results Display (Uses Search API)
  * Shows available trains for the selected route, date, and time
  */
 const TrainResults = ({ route, dateTime, onSelectTrain }) => {
@@ -16,32 +16,50 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
     const fetchTrains = async () => {
       try {
         setLoading(true);
-        // Fetch trains for this route from the database
-        const response = await fetch(`${API_BASE}/api/trains`);
+        setError(null);
+
+        // Build search query parameters
+        const params = new URLSearchParams({
+          from: route.from,
+          to: route.to,
+          time: dateTime.time,
+        });
+
+        // Add date if provided (formatted as ISO string)
+        if (dateTime.date) {
+          const dateStr = new Date(dateTime.date).toISOString();
+          params.append("date", dateStr);
+        }
+
+        console.log("🔍 Searching trains:", params.toString());
+
+        // Call search API
+        const response = await fetch(`${API_BASE}/api/search?${params.toString()}`);
         
         if (!response.ok) {
-          throw new Error("Failed to fetch trains");
+          throw new Error(`Search failed: ${response.status}`);
         }
         
-        const allTrains = await response.json();
+        const data = await response.json();
         
-        // Filter trains that match the route and time
-        const matchingTrains = allTrains.filter(train => 
-          train.from === route.from && 
-          train.to === route.to &&
-          train.time === dateTime.time
-        );
+        console.log(`✅ Found ${data.results} trains:`, data.trains);
         
-        setTrains(matchingTrains);
+        setTrains(data.trains);
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching trains:", err);
+        console.error("❌ Error fetching trains:", err);
         setError(err.message);
         setLoading(false);
       }
     };
 
-    fetchTrains();
+    // Only fetch if we have the required data
+    if (route?.from && route?.to && dateTime?.time) {
+      fetchTrains();
+    } else {
+      setLoading(false);
+      setError("Missing route or date/time information");
+    }
   }, [route, dateTime]);
 
   const getClassColor = (trainClass) => {
@@ -58,7 +76,10 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
       <div style={styles.container}>
         <div style={styles.loadingState}>
           <div style={styles.spinner}>🚆</div>
-          <p style={styles.loadingText}>Finding available trains...</p>
+          <p style={styles.loadingText}>Searching for trains...</p>
+          <p style={styles.loadingSubtext}>
+            {route.from} → {route.to} • {dateTime.label}
+          </p>
         </div>
       </div>
     );
@@ -69,8 +90,14 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
       <div style={styles.container}>
         <div style={styles.errorState}>
           <div style={styles.errorIcon}>⚠️</div>
-          <h3 style={styles.errorTitle}>Unable to load trains</h3>
+          <h3 style={styles.errorTitle}>Search Failed</h3>
           <p style={styles.errorText}>{error}</p>
+          <button 
+            style={styles.retryButton}
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -87,6 +114,9 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
           <span>{new Date(dateTime.date).toLocaleDateString('en-ZA', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
           <span style={styles.separator}>•</span>
           <span>{dateTime.label}</span>
+        </div>
+        <div style={styles.resultCount}>
+          {trains.length} {trains.length === 1 ? 'train' : 'trains'} found
         </div>
       </div>
 
@@ -212,8 +242,10 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
           <div style={styles.emptyIcon}>🚫</div>
           <h3 style={styles.emptyTitle}>No trains available</h3>
           <p style={styles.emptyText}>
-            There are no trains running on this route for the selected date and time.
-            Please try a different date or time.
+            There are no trains running from <strong>{route.from}</strong> to <strong>{route.to}</strong> at <strong>{dateTime.time}</strong>.
+          </p>
+          <p style={styles.emptyText}>
+            Try selecting a different time or date.
           </p>
         </div>
       )}
@@ -248,6 +280,12 @@ const styles = {
   routeInfo: {
     fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     color: colors.neutral.gray700,
+    marginBottom: spacing.xs,
+  },
+  resultCount: {
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.primary.blue,
+    fontWeight: typography.weight.semibold,
   },
   separator: {
     margin: `0 ${spacing.sm}`,
@@ -266,6 +304,11 @@ const styles = {
     fontSize: typography.scale.lg,
     color: colors.neutral.gray700,
     marginTop: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+  loadingSubtext: {
+    fontSize: typography.scale.sm,
+    color: colors.neutral.gray600,
   },
   errorState: {
     textAlign: 'center',
@@ -284,6 +327,18 @@ const styles = {
   errorText: {
     fontSize: typography.scale.base,
     color: colors.neutral.gray700,
+    marginBottom: spacing.lg,
+  },
+  retryButton: {
+    padding: `${spacing.md} ${spacing.xl}`,
+    background: colors.primary.blue,
+    color: colors.neutral.white,
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: typography.scale.base,
+    fontWeight: typography.weight.semibold,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
   },
   trainsGrid: {
     display: 'grid',
@@ -467,8 +522,18 @@ const styles = {
     fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
     color: colors.neutral.gray700,
     maxWidth: '500px',
-    margin: '0 auto',
+    margin: '0 auto 0.5rem',
   },
 };
+
+// Add spinner animation
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
 
 export default TrainResults;

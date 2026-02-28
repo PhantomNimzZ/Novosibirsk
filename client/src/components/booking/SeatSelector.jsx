@@ -51,7 +51,7 @@ const SeatSelector = ({ totalSeats = 60, bookedSeats = [], selectedSeat, onSeatS
       {/* Legend */}
       <div className="flex gap-4 mb-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-gray-200 border border-gray-300 rounded"></div>
+          <div className="w-6 h-6 bg-green-200 border border-gray-300 rounded"></div>
           <span>Available</span>
         </div>
         <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ const SeatSelector = ({ totalSeats = 60, bookedSeats = [], selectedSeat, onSeatS
                   ? "bg-red-100 border-red-300 text-red-500 cursor-not-allowed opacity-60"
                   : seat.isSelected
                   ? "bg-blue-600 border-blue-700 text-white scale-105 shadow-md"
-                  : "bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400"
+                  : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100 hover:border-green-400"
                 }
                 ${(index % 4 === 1 || index % 4 === 2) ? "mx-1" : ""} // Aisle spacing
               `}

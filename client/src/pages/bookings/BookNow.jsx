@@ -8,6 +8,7 @@ import { getCityFromTrainId } from "../../utils/routeUtils";
 import { generatePDF } from "../../utils/generatePDF";
 import { API_BASE } from "../../api/config";
 
+
 const BookNow = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,8 +31,62 @@ const BookNow = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+  const [bookedSeats, setBookedSeats] = useState([]);
+  const [loadingSeats, setLoadingSeats] = useState(true);
 
-  // Mock booked seats (in production, fetch from API based on train + date)
+  // Fetch booked seats from API
+  useEffect(() => {
+    console.log("🐛 useEffect triggered. Train:", train);  // ADD THIS LINE
+    console.log("🐛 Train object:", train);
+    console.log("🐛 Train ID:", train?.id);
+    console.log("🐛 Train keys:", Object.keys(train));  // ADD THIS
+    console.log("🐛 Full train data:", JSON.stringify(train, null, 2));  // ADD THIS
+
+    const fetchBookedSeats = async () => {
+      try {
+        setLoadingSeats(true);
+        
+        const trainId = train.id || train.trainId || train.train_id;
+
+        if (!trainId) {
+          console.error("❌ No train ID found in train object:", train);
+          setLoadingSeats(false);
+          return;
+        }
+
+        const dateStr = new Date(train.date).toISOString().split('T')[0];
+        
+        console.log(`🔍 Fetching booked seats for train ${trainId} on ${dateStr}`);
+        
+        const response = await fetch(
+          `${API_BASE}/api/trains/${trainId}/seats?date=${dateStr}`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch booked seats');
+        }
+        
+        const data = await response.json();
+        console.log(`✅ Found ${data.count} booked seats:`, data.bookedSeats);
+        
+        setBookedSeats(data.bookedSeats);
+        setLoadingSeats(false);
+      } catch (error) {
+        console.error('❌ Error fetching booked seats:', error);
+        setBookedSeats([]); // Default to empty if error
+        setLoadingSeats(false);
+      }
+    };
+
+    if (train) {
+      console.log("🐛 Attempting fetch with train:", train);
+      fetchBookedSeats();
+    } else {
+      console.log("🐛 No train object, skipping fetch");
+    }
+  }, [train]);
+
+ /* // Mock booked seats (in production, fetch from API based on train + date)
   const [bookedSeats] = useState(["1A", "1B", "2C", "3D", "5A", "7B"]);
 
   // Clean up sessionStorage on unmount if booking succeeded
@@ -39,7 +94,7 @@ const BookNow = () => {
     return () => {
       if (bookingSuccess) sessionStorage.removeItem("selectedTrain");
     };
-  }, [bookingSuccess]);
+  }, [bookingSuccess]); */
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -190,6 +245,10 @@ const BookNow = () => {
   const cityKey = getCityFromTrainId(train.train);
   const stationCoords = cityKey ? stationCoordinatesByCity[cityKey] : {};
 
+  console.log("🐛 bookedSeats:", bookedSeats);
+  console.log("🐛 loadingSeats:", loadingSeats);
+  console.log("🐛 selectedSeat:", selectedSeat);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-4xl bg-white shadow-lg rounded-xl p-8">
@@ -215,10 +274,10 @@ const BookNow = () => {
         {/* Seat Selection */}
         <div className="mb-8">
           <SeatSelector
-            totalSeats={60}
             bookedSeats={bookedSeats}
             selectedSeat={selectedSeat}
-            onSeatSelect={setSelectedSeat}
+            onSeatSelect={setSelectedSeat}  // ✅ Correct prop name
+            loading={loadingSeats}
           />
         </div>
 

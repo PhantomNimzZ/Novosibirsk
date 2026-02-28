@@ -1,6 +1,6 @@
-// server/routes/admin/bookings.js
+// server/routes/admin/bookings.js (UPDATED)
 import express from "express";
-import prisma from "../../lib/prisma.js"; // ✅ Singleton — no more new PrismaClient()
+import prisma from "../../lib/prisma.js";
 import verifyToken from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -37,6 +37,40 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    // ✅ NEW: Check if seat is already booked
+    if (seat && seat !== "General Seating") {
+      // Get all bookings for this train and seat
+      const allBookings = await prisma.booking.findMany({
+        where: {
+          trainId: parseInt(trainId),
+          seat: seat,
+          status: {
+            not: "Cancelled",
+          },
+        },
+        select: {
+          date: true,
+          passengerName: true,
+        },
+      });
+
+      // Filter by date (comparing just date part)
+      const dateStr = new Date(date).toISOString().split('T')[0];
+      const existingBooking = allBookings.find(booking => {
+        const bookingDate = new Date(booking.date).toISOString().split('T')[0];
+        return bookingDate === dateStr;
+      });
+
+      if (existingBooking) {
+        return res.status(409).json({ 
+          error: "Seat already booked",
+          message: `Seat ${seat} is already booked by another passenger`,
+          bookedBy: existingBooking.passengerName,
+        });
+      }
+    }
+
+    // Create booking
     const booking = await prisma.booking.create({
       data: {
         passengerName,
@@ -57,6 +91,8 @@ router.post("/", async (req, res) => {
       },
       include: { train: true },
     });
+
+    console.log(`✅ Booking created: ${booking.id} - ${passengerName} - Seat ${seat}`);
 
     res.status(201).json(booking);
   } catch (error) {
@@ -108,7 +144,7 @@ router.get("/:id", verifyToken, async (req, res) => {
 router.put("/:id", verifyToken, async (req, res) => {
   try {
     const data = { ...req.body };
-    if (data.date) data.date = new Date(data.date);
+    if (data.date) data.date = new Date(data.date).toISOString();
     if (data.price) data.price = parseFloat(data.price);
     if (data.trainId) data.trainId = parseInt(data.trainId);
 

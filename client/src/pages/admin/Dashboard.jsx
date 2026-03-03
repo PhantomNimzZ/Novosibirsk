@@ -1,141 +1,216 @@
 // client/src/pages/admin/Dashboard.jsx
-import { useState, useEffect } from "react";
-import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  Tooltip, PieChart, Pie, Cell, Legend,
-} from "recharts";
-import { FaUsers, FaCalendarDay, FaRoute } from "react-icons/fa";
-import { API_BASE } from "../../api/config"; // ✅ Centralised URL
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../../api/config";
 
-export default function DashboardAnalytics() {
-  const [overview, setOverview] = useState({
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
     totalBookings: 0,
-    bookingsToday: 0,
-    mostPopularRoute: "No data",
     totalRevenue: 0,
-    revenueToday: 0,
+    activeTrains: 0,
+    pendingPayments: 0,
   });
-  const [bookingsByDate, setBookingsByDate] = useState([]);
-  const [bookingsByRoute, setBookingsByRoute] = useState([]);
-  const [error, setError] = useState(null);
+  const [popularRoutes, setPopularRoutes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ✅ All stats requests now include the auth token
-    const token = localStorage.getItem("adminToken");
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    const fetchStats = async () => {
-      try {
-        const [overviewRes, dateRes, routeRes] = await Promise.all([
-          fetch(`${API_BASE}/api/admin/stats/overview`, { headers }),
-          fetch(`${API_BASE}/api/admin/stats/bookings-by-date`, { headers }),
-          fetch(`${API_BASE}/api/admin/stats/bookings-by-route`, { headers }),
-        ]);
-
-        if (!overviewRes.ok || !dateRes.ok || !routeRes.ok) {
-          throw new Error("Failed to load dashboard stats");
-        }
-
-        const [overviewData, dateData, routeData] = await Promise.all([
-          overviewRes.json(),
-          dateRes.json(),
-          routeRes.json(),
-        ]);
-
-        setOverview(overviewData);
-        setBookingsByDate(dateData);
-        setBookingsByRoute(routeData);
-      } catch (err) {
-        console.error("Dashboard stats error:", err);
-        setError("Failed to load dashboard statistics.");
-      }
-    };
-
-    fetchStats();
+    fetchDashboardData();
   }, []);
 
-  const pieColors = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#f59e0b", "#8b5cf6"];
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      
+      // Call the correct endpoint: /overview
+      const response = await fetch(`${API_BASE}/api/admin/stats/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  if (error) {
+      if (!response.ok) throw new Error("Failed to fetch stats");
+
+      const data = await response.json();
+      
+      // Map API response to dashboard state
+      setStats({
+        totalBookings: data.totalBookings || 0,
+        totalRevenue: data.totalRevenue || 0,
+        activeTrains: data.bookingsToday || 0, // Using bookingsToday as placeholder
+        pendingPayments: 0, // Not provided by API, would need separate query
+      });
+      
+      // Create popularRoutes array from mostPopularRoute
+      if (data.mostPopularRoute && data.mostPopularRoute !== "No data") {
+        const [from, to] = data.mostPopularRoute.split(" → ");
+        setPopularRoutes([
+          {
+            from,
+            to,
+            count: 1, // API doesn't provide count
+            revenue: data.revenueToday || 0,
+          }
+        ]);
+      } else {
+        setPopularRoutes([]);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="p-6 text-red-500">{error}</div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", fontFamily: "Arial, sans-serif" }}>
-      {/* KPI Cards */}
-      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "32px" }}>
-        <Card color="#2563eb" icon={<FaUsers />} title="Total Bookings" value={overview.totalBookings} />
-        <Card color="#16a34a" icon={<FaCalendarDay />} title="Bookings Today" value={overview.bookingsToday} />
-        <Card color="#f59e0b" icon={<FaRoute />} title="Most Popular Route" value={overview.mostPopularRoute} />
-        <Card color="#9333ea" icon="💰" title="Total Revenue"
-          value={`R${Number(overview.totalRevenue ?? 0).toLocaleString()}`} />
-        <Card color="#dc2626" icon="🛒" title="Revenue Today"
-          value={`R${Number(overview.revenueToday ?? 0).toLocaleString()}`} />
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
 
-      {/* Charts */}
-      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-        <div style={chartContainerStyle}>
-          <h2 style={chartTitleStyle}>Bookings Over Time</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={bookingsByDate}>
-              <XAxis dataKey="date" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Bookings */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                {stats.totalBookings || 0}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        <div style={chartContainerStyle}>
-          <h2 style={chartTitleStyle}>Bookings by Route</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={bookingsByRoute} dataKey="count" nameKey="route" outerRadius={100} label>
-                {bookingsByRoute.map((_, index) => (
-                  <Cell key={index} fill={pieColors[index % pieColors.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
+        {/* Total Revenue */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                R{(stats.totalRevenue || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Trains - showing bookings today instead */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Bookings Today</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                {stats.activeTrains || 0}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🚆</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Payments */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Pending Payments</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                {stats.pendingPayments || 0}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Popular Routes */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">Most Popular Route</h2>
+        </div>
+        
+        <div className="p-6">
+          {popularRoutes.length > 0 ? (
+            <div className="space-y-4">
+              {popularRoutes.map((route, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-semibold text-blue-600">#{index + 1}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {route.from} → {route.to}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {route.count} bookings
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">
+                      R{(route.revenue || 0).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">revenue</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No route data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div
+          onClick={() => navigate("/admin/manage-bookings")}
+          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+        >
+          <h3 className="font-semibold text-gray-800 mb-2">Manage Bookings</h3>
+          <p className="text-sm text-gray-600">View and manage all bookings</p>
+        </div>
+
+        <div
+          onClick={() => navigate("/admin/manage-trains")}
+          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+        >
+          <h3 className="font-semibold text-gray-800 mb-2">Manage Trains</h3>
+          <p className="text-sm text-gray-600">Add or update train schedules</p>
+        </div>
+
+        <div
+          onClick={() => navigate("/admin/create-booking")}
+          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+        >
+          <h3 className="font-semibold text-gray-800 mb-2">Create Booking</h3>
+          <p className="text-sm text-gray-600">Create a new booking manually</p>
         </div>
       </div>
     </div>
   );
-}
-
-function Card({ color, icon, title, value }) {
-  return (
-    <div
-      style={{
-        background: "#fff", borderRadius: "12px",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-        flex: "1 1 200px", padding: "24px",
-        display: "flex", flexDirection: "column", alignItems: "center",
-        position: "relative", transition: "transform 0.2s",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-4px)")}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-    >
-      <div style={{ height: "6px", width: "100%", background: color, borderRadius: "6px", position: "absolute", top: 0, left: 0 }} />
-      <div style={{ fontSize: "32px", marginBottom: "12px", color }}>{icon}</div>
-      <h3 style={{ fontSize: "16px", color: "#555", marginBottom: "8px" }}>{title}</h3>
-      <span style={{ fontSize: "28px", fontWeight: "bold", textAlign: "center" }}>{value}</span>
-    </div>
-  );
-}
-
-const chartContainerStyle = {
-  background: "#fff", padding: "24px",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-  borderRadius: "12px", flex: "1 1 400px",
 };
 
-const chartTitleStyle = { fontSize: "18px", fontWeight: "600", marginBottom: "16px" };
+export default Dashboard;

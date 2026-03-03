@@ -1,124 +1,211 @@
-import React, { useState, useEffect } from "react";
-import TrainTable from "../../components/admin/TrainTable.jsx";
-import TrainModal from "../../components/admin/TrainModal.jsx";
+// client/src/pages/admin/ManageTrains.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import TrainTable from "../../components/admin/TrainTable";
+import TrainModal from "../../components/admin/TrainModal";
+import { API_BASE } from "../../api/config";
 
-export default function ManageTrains() {
+const ManageTrains = () => {
   const [trains, setTrains] = useState([]);
-  const [selectedTrain, setSelectedTrain] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-
-  // 🧠 Fetch all trains (GET — public)
-  const fetchTrains = async () => {
-    try {
-      const res = await fetch("http://localhost:3001/api/trains");
-      if (!res.ok) throw new Error("Failed to fetch trains");
-      const data = await res.json();
-      setTrains(data);
-    } catch (err) {
-      console.error("Error fetching trains:", err);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTrain, setEditingTrain] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTrains();
   }, []);
 
-  // 🪪 Get JWT token
-  const getToken = () => localStorage.getItem("adminToken");
+  const fetchTrains = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // ✅ Handle save from modal
-  const handleSave = async () => {
-    await fetchTrains();
-    setShowModal(false);
-    setSelectedTrain(null);
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        navigate("/admin/login");
+        return;
+      }
+
+      console.log("🔍 Fetching trains from:", `${API_BASE}/api/trains`);
+
+      const response = await fetch(`${API_BASE}/api/trains`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem("adminToken");
+        navigate("/admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch trains: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Fetched trains:", data);
+      setTrains(data);
+      setLoading(false);
+    } catch (err) {
+      console.error("❌ Error fetching trains:", err);
+      setError(err.message);
+      setLoading(false);
+    }
   };
 
-  // 🗑️ Delete Train
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this train?")) return;
+  const handleCreate = () => {
+    setEditingTrain(null);
+    setIsModalOpen(true);
+  };
 
-    const token = getToken();
-    if (!token) {
-      alert("Unauthorized. Please log in again.");
+  const handleEdit = (train) => {
+    setEditingTrain(train);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this train?")) {
       return;
     }
 
     try {
-      const res = await fetch(`http://localhost:3001/api/trains/${id}`, {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(`${API_BASE}/api/trains/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (res.status === 401 || res.status === 403) {
-        alert("Unauthorized. Please log in again.");
-        return;
+      if (!response.ok) {
+        throw new Error("Failed to delete train");
       }
 
-      if (!res.ok) throw new Error("Failed to delete train");
-
-      await fetchTrains();
-      alert("Train deleted successfully!");
+      setTrains(trains.filter((t) => t.id !== id));
+      alert("Train deleted successfully");
     } catch (err) {
       console.error("Error deleting train:", err);
-      alert("Error deleting train. Check console for details.");
+      alert("Failed to delete train: " + err.message);
     }
   };
 
-  // 🚪 Logout
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    alert("You have been logged out.");
-    window.location.href = "/admin/login";
+  const handleSave = async (trainData) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const method = editingTrain ? "PUT" : "POST";
+      const url = editingTrain
+        ? `${API_BASE}/api/trains/${editingTrain.id}`
+        : `${API_BASE}/api/trains`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(trainData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save train");
+      }
+
+      const savedTrain = await response.json();
+
+      if (editingTrain) {
+        // Update existing
+        setTrains(trains.map((t) => (t.id === savedTrain.id ? savedTrain : t)));
+      } else {
+        // Add new
+        setTrains([...trains, savedTrain]);
+      }
+
+      setIsModalOpen(false);
+      setEditingTrain(null);
+      alert("Train saved successfully");
+    } catch (err) {
+      console.error("Error saving train:", err);
+      alert("Failed to save train: " + err.message);
+    }
   };
 
-  return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Manage Trains</h1>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading trains...</span>
+      </div>
+    );
+  }
 
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setSelectedTrain(null);
-              setShowModal(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-          >
-            + Add Train
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
-          >
-            Logout
-          </button>
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="flex items-center">
+          <svg className="w-6 h-6 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h3 className="font-semibold text-red-900">Error Loading Trains</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
         </div>
+        <button
+          onClick={fetchTrains}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Manage Trains</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {trains.length} {trains.length === 1 ? "train" : "trains"} in system
+          </p>
+        </div>
+        <button
+          onClick={handleCreate}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Train
+        </button>
       </div>
 
-      {/* ✅ Train Table Integration */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <TrainTable
-          trains={trains}
-          onEdit={(train) => {
-            setSelectedTrain(train);
-            setShowModal(true);
-          }}
-          onDelete={handleDelete}
-        />
-      </div>
+      {/* Trains Table */}
+      <TrainTable
+        trains={trains}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
-      {/* ✨ Train Modal */}
-      {showModal && (
+      {/* Train Modal */}
+      {isModalOpen && (
         <TrainModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
+          train={editingTrain}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingTrain(null);
+          }}
           onSave={handleSave}
-          initialData={selectedTrain}
         />
       )}
     </div>
   );
-}
+};
+
+export default ManageTrains;

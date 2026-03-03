@@ -1,6 +1,6 @@
 // server/routes/admin/trains.js
 import express from "express";
-import prisma from "../../lib/prisma.js"; // ✅ Singleton
+import prisma from "../../lib/prisma.js";
 import verifyToken from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -10,7 +10,12 @@ const router = express.Router();
 // ─────────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
-    const trains = await prisma.train.findMany();
+    const trains = await prisma.train.findMany({
+      orderBy: [
+        { date: 'asc' },
+        { time: 'asc' }
+      ]
+    });
     res.json(trains);
   } catch (error) {
     console.error(error);
@@ -34,52 +39,107 @@ router.get("/:id", async (req, res) => {
 });
 
 // ─────────────────────────────────────────
-// ADMIN: Create train
+// ADMIN: Create train (UPDATED FOR NEW SCHEMA)
 // ─────────────────────────────────────────
 router.post("/", verifyToken, async (req, res) => {
-  const { name, number, seats, price } = req.body;
+  const { 
+    train, 
+    trainNumber, 
+    from, 
+    to, 
+    date, 
+    time, 
+    seats, 
+    price,
+    class: trainClass,
+    amenities,
+    distance,
+    duration,
+    intermediateStops
+  } = req.body;
 
-  if (!name || !number) {
-    return res.status(400).json({ error: "Train name and number are required" });
+  // Validation
+  if (!train || !trainNumber || !from || !to || !date || !time) {
+    return res.status(400).json({ 
+      error: "Required fields: train, trainNumber, from, to, date, time" 
+    });
   }
 
   try {
-    const train = await prisma.train.create({
+    const newTrain = await prisma.train.create({
       data: {
-        name,
-        number,
-        seats: parseInt(seats) || 0,
+        train,
+        trainNumber,
+        from,
+        to,
+        date: new Date(date).toISOString(),
+        time,
+        seats: parseInt(seats) || 100,
         price: parseFloat(price) || 0,
+        class: trainClass || "Economy",
+        amenities: amenities || "",
+        distance: distance ? parseInt(distance) : null,
+        duration: duration ? parseInt(duration) : null,
+        intermediateStops: intermediateStops || "",
       },
     });
-    res.status(201).json(train);
+    
+    console.log("✅ Train created:", newTrain.id);
+    res.status(201).json(newTrain);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create train" });
+    console.error("❌ Create train error:", error);
+    res.status(500).json({ error: "Failed to create train", details: error.message });
   }
 });
 
 // ─────────────────────────────────────────
-// ADMIN: Update train
+// ADMIN: Update train (UPDATED FOR NEW SCHEMA)
 // ─────────────────────────────────────────
 router.put("/:id", verifyToken, async (req, res) => {
-  const { name, number, seats, price } = req.body;
+  const { 
+    train, 
+    trainNumber, 
+    from, 
+    to, 
+    date, 
+    time, 
+    seats, 
+    price,
+    class: trainClass,
+    amenities,
+    distance,
+    duration,
+    intermediateStops
+  } = req.body;
 
   try {
-    const train = await prisma.train.update({
+    const updatedTrain = await prisma.train.update({
       where: { id: parseInt(req.params.id) },
       data: {
-        name,
-        number,
-        seats: parseInt(seats),
-        price: parseFloat(price),
+        train,
+        trainNumber,
+        from,
+        to,
+        date: date ? new Date(date).toISOString() : undefined,
+        time,
+        seats: seats ? parseInt(seats) : undefined,
+        price: price ? parseFloat(price) : undefined,
+        class: trainClass,
+        amenities,
+        distance: distance ? parseInt(distance) : null,
+        duration: duration ? parseInt(duration) : null,
+        intermediateStops,
       },
     });
-    res.json(train);
+    
+    console.log("✅ Train updated:", updatedTrain.id);
+    res.json(updatedTrain);
   } catch (error) {
+    console.error("❌ Update train error:", error);
     if (error.code === "P2025") {
       return res.status(404).json({ error: "Train not found" });
     }
-    res.status(500).json({ error: "Failed to update train" });
+    res.status(500).json({ error: "Failed to update train", details: error.message });
   }
 });
 
@@ -92,8 +152,11 @@ router.delete("/:id", verifyToken, async (req, res) => {
     await prisma.train.delete({
       where: { id: parseInt(req.params.id) },
     });
+    
+    console.log("✅ Train deleted:", req.params.id);
     res.json({ message: "Train deleted successfully" });
   } catch (error) {
+    console.error("❌ Delete train error:", error);
     if (error.code === "P2025") {
       return res.status(404).json({ error: "Train not found" });
     }

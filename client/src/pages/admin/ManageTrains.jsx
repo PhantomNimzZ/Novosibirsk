@@ -62,12 +62,71 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  const handleEdit = (train) => {
+  // ✅ ISSUE 6 FIX: Warn before editing trains with active bookings
+  const handleEdit = async (train) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(`${API_BASE}/api/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const bookings = await response.json();
+        const activeBookings = bookings.filter(
+          b => b.trainId === train.id && b.status === "Active"
+        );
+        
+        if (activeBookings.length > 0) {
+          const confirmEdit = window.confirm(
+            `⚠️ WARNING: This train has ${activeBookings.length} active booking(s)!\n\n` +
+            `Editing this train's route, date, or time will cause data inconsistencies with existing bookings.\n\n` +
+            `Recommended: Only edit non-critical fields (seats, price, amenities).\n\n` +
+            `Continue editing anyway?`
+          );
+          
+          if (!confirmEdit) {
+            return; // Cancel edit
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking bookings:", error);
+      // Continue anyway if check fails
+    }
+    
     setEditingTrain(train);
     setIsModalOpen(true);
   };
 
+  // ✅ ISSUE 6 & 8 FIX: Prevent deleting trains with active bookings
   const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch(`${API_BASE}/api/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        const bookings = await response.json();
+        const activeBookings = bookings.filter(
+          b => b.trainId === id && b.status === "Active"
+        );
+        
+        if (activeBookings.length > 0) {
+          alert(
+            `❌ Cannot delete this train!\n\n` +
+            `This train has ${activeBookings.length} active booking(s).\n\n` +
+            `You must cancel all bookings first before deleting the train.`
+          );
+          return; // Block deletion
+        }
+      }
+    } catch (error) {
+      console.error("Error checking bookings:", error);
+      alert("Error checking bookings. Please try again.");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to delete this train?")) {
       return;
     }

@@ -20,6 +20,7 @@ import Dashboard from "./pages/admin/Dashboard.jsx";
 import ManageBookings from "./pages/admin/ManageBookings.jsx";
 import CreateBooking from "./pages/admin/CreateBooking.jsx";
 import ManageTrains from "./pages/admin/ManageTrains.jsx";
+import CreateCommuterBooking from "./pages/admin/CreateCommuterBooking.jsx";
 
 // Create root
 const root = ReactDOM.createRoot(document.getElementById("root"));
@@ -49,8 +50,10 @@ root.render(
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} /> {/* Admin dashboard */}
             <Route path="create-booking" element={<CreateBooking />} /> {/* New Booking */}
+            <Route path="create-commuter-booking" element={<CreateCommuterBooking />} />
             <Route path="manage-bookings" element={<ManageBookings />} /> {/* Manage Bookings */}
             <Route path="manage-trains" element={<ManageTrains />} /> {/* Manage Trains */}
+            
           </Route>
         </Route>
 

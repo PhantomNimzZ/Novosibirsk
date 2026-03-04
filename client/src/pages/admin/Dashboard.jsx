@@ -184,7 +184,7 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
           onClick={() => navigate("/admin/manage-bookings")}
           className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
@@ -201,12 +201,26 @@ const Dashboard = () => {
           <p className="text-sm text-gray-600">Add or update train schedules</p>
         </div>
 
+        {/* Long-Distance */}
         <div
           onClick={() => navigate("/admin/create-booking")}
           className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
         >
-          <h3 className="font-semibold text-gray-800 mb-2">Create Booking</h3>
-          <p className="text-sm text-gray-600">Create a new booking manually</p>
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <span>🚆</span> Long-Distance
+          </h3>
+          <p className="text-sm text-gray-600">Create intercity booking</p>
+        </div>
+        
+        {/* Commuter */}
+        <div
+          onClick={() => navigate("/admin/create-commuter-booking")}
+          className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+        >
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <span>🚇</span> Commuter
+          </h3>
+          <p className="text-sm text-gray-600">Create metro booking</p>
         </div>
       </div>
     </div>

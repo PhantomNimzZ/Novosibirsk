@@ -44,26 +44,47 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Send only the fields that should be updated
-    // Keep the original booking ID and trainId
+    // ✅ ISSUE 5 FIX: Check if new seat is available (if seat changed)
+    if (formData.seat !== booking.seat && formData.seat && formData.seat !== "General Seating") {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE || 'http://localhost:3001'}/api/trains/${booking.trainId}/seats/${formData.seat}/available?date=${formData.date}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.available) {
+            alert(`❌ Seat ${formData.seat} is already booked by ${data.bookedBy}. Please choose a different seat.`);
+            return; // Don't save
+          }
+        }
+      } catch (error) {
+        console.error("Error checking seat availability:", error);
+        // Continue anyway - don't block if API fails
+      }
+    }
+    
+    // Send only editable fields
     const dataToSave = {
       id: booking.id,
+      // ✅ ISSUES 1, 2, 3 FIX: Route, date, time, trainNumber are READ-ONLY (not sent)
       passengerName: formData.passengerName,
       email: formData.email,
       idNumber: formData.idNumber,
-      trainNumber: formData.trainNumber,
-      departure: formData.departure,
-      destination: formData.destination,
-      date: formData.date, // Keep as YYYY-MM-DD format
-      time: formData.time,
       seat: formData.seat,
       price: parseFloat(formData.price),
       paymentStatus: formData.paymentStatus,
       status: formData.status,
-      trainId: booking.trainId, // Preserve the trainId from original booking
+      // Keep original train data
+      trainId: booking.trainId,
+      trainNumber: booking.trainNumber,
+      departure: booking.departure,
+      destination: booking.destination,
+      date: booking.date,
+      time: booking.time,
     };
 
     console.log("🔄 Sending update with data:", dataToSave);
@@ -134,86 +155,45 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
               />
             </div>
 
-            {/* Route Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  From *
-                </label>
-                <input
-                  type="text"
-                  name="departure"
-                  value={formData.departure}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            {/* Route Info - READ ONLY (Issues 1, 2 fix) */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                🔒 Train & Route Information (Read-only)
+              </p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Train:</span>{" "}
+                  <span className="font-medium">{booking.trainNumber || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Route:</span>{" "}
+                  <span className="font-medium">{booking.departure} → {booking.destination}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Date:</span>{" "}
+                  <span className="font-medium">{new Date(booking.date).toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Time:</span>{" "}
+                  <span className="font-medium">{booking.time || "N/A"}</span>
+                </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  To *
-                </label>
-                <input
-                  type="text"
-                  name="destination"
-                  value={formData.destination}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                ℹ️ To change train/route/schedule, cancel this booking and create a new one.
+              </p>
             </div>
-
-            {/* Schedule */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date *
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Time
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Train & Seat */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Train Number
-                </label>
-                <input
-                  type="text"
-                  name="trainNumber"
-                  value={formData.trainNumber}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Seat
-                </label>
+            {/* Seat Selection (with availability check) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Seat Number
+              </label>
+              {booking.seat === "General Seating" ? (
+                // Commuter trains - read-only
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600">
+                  General Seating (Commuter Train)
+                </div>
+              ) : (
+                // Long-distance trains - editable
                 <input
                   type="text"
                   name="seat"
@@ -222,7 +202,13 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., 5A"
                 />
-              </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                {booking.seat === "General Seating" 
+                  ? "🚇 Commuter trains use general seating only"
+                  : "⚠️ Changing seat will check availability to prevent double-booking"
+                }
+              </p>
             </div>
 
             {/* Price & Status */}
@@ -241,6 +227,9 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <p className="text-xs text-yellow-600 mt-1">
+                  ⚠️ Changing price will create mismatch with train price
+                </p>
               </div>
 
               <div>

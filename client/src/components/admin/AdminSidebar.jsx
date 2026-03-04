@@ -38,11 +38,34 @@ const AdminSidebar = () => {
           Dashboard
         </Link>
 
-        <Link 
+        {/* Long-Distance Booking */}
+        <Link
           to="/admin/create-booking"
-          style={{ color: "white", textDecoration: "none" }}
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+            location.pathname === "/admin/create-booking"
+              ? "bg-blue-600 text-white"
+              : "text-cyan-700 hover:bg-gray-100"
+          }`}
         >
-          Create Booking
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          🚆 Long-Distance
+        </Link>
+
+        {/* Commuter Booking */}
+        <Link
+          to="/admin/create-commuter-booking"
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+            location.pathname === "/admin/create-commuter-booking"
+              ? "bg-blue-600 text-white"
+              : "text-cyan-700 hover:bg-gray-100"
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          🚇 Commuter
         </Link>
 
         <Link 

@@ -84,22 +84,80 @@ const CommuterCity = () => {
     }
   }, [from, to, cityId]);
 
+  // ✅ APPROACH B: Find a train that serves this route
+  const findMatchingTrain = async (fromStation, toStation, dateStr) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/trains`);
+      if (!response.ok) return null;
+      
+      const allTrains = await response.json();
+      
+      // Find metro trains that include this route
+      const matching = allTrains.filter(train => {
+        if (!train.train?.includes("Metro Rail")) return false;
+        
+        try {
+          const stops = JSON.parse(train.intermediateStops || "[]");
+          const fromIndex = stops.indexOf(fromStation);
+          const toIndex = stops.indexOf(toStation);
+          // Valid if both stations exist and from comes before to
+          return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+        } catch {
+          // Fallback to exact match if intermediateStops not available
+          return train.from === fromStation && train.to === toStation;
+        }
+      }).filter(train => 
+        new Date(train.date).toISOString().split('T')[0] === dateStr
+      );
+      
+      console.log(`🚇 Found ${matching.length} trains for ${fromStation} → ${toStation} on ${dateStr}`);
+      return matching.length > 0 ? matching[0] : null;
+    } catch (error) {
+      console.error("Error finding train:", error);
+      return null;
+    }
+  };
+
   const handleBooking = async (formData) => {
     try {
+      // ✅ OPTION 1: Block transfer routes with helpful guidance
+      if (routeValidation.type === "transfer") {
+        alert(
+          "⚠️ TRANSFER REQUIRED\n\n" +
+          "This route requires a transfer and must be booked as two separate journeys:\n\n" +
+          `📍 Leg 1: ${routeValidation.legs[0].from} → ${routeValidation.legs[0].to}\n` +
+          `   Line: ${routeValidation.legs[0].line}\n\n` +
+          `📍 Leg 2: ${routeValidation.legs[1].from} → ${routeValidation.legs[1].to}\n` +
+          `   Line: ${routeValidation.legs[1].line}\n\n` +
+          "💡 TIP: Book the first leg now, then book the second leg separately.\n\n" +
+          `Total estimated fare: R${routeValidation.fare}`
+        );
+        return; // Don't proceed with booking
+      }
+
+      // ✅ APPROACH B: Find a matching train before creating booking (direct routes only)
+      const dateStr = new Date().toISOString().split('T')[0];
+      const matchingTrain = await findMatchingTrain(formData.from, formData.to, dateStr);
+      
+      if (!matchingTrain) {
+        alert("No trains available for this route today. Please try again later or contact support.");
+        throw new Error("No matching train found");
+      }
+
       const bookingPayload = {
         passengerName: formData.name,
         email: "commuter@prasa.co.za",
         idNumber: "N/A",
-        trainNumber: `Commuter-${cityId}`,
+        trainNumber: matchingTrain.trainNumber, // ✅ Real train number
         departure: formData.from,
         destination: formData.to,
-        date: new Date().toISOString(),
-        time: "Any",
+        date: matchingTrain.date, // ✅ Real train date
+        time: matchingTrain.time, // ✅ Real train time
         seat: "General Seating",
         price: formData.fare,
         paymentStatus: formData.payment === "mobile" ? "Pending" : "Cash",
         status: "Active",
-        trainId: 1,
+        trainId: matchingTrain.id, // ✅ Real train ID (no more phantom bookings!)
       };
 
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -122,6 +180,8 @@ const CommuterCity = () => {
         fare: formData.fare,
         payment: formData.payment,
         date: new Date().toISOString(),
+        trainNumber: matchingTrain.trainNumber,
+        time: matchingTrain.time,
       });
 
       setBookingComplete(true);
@@ -149,8 +209,10 @@ PRASA Commuter Ticket
 Ticket #${bookingData.id}
 Passenger: ${bookingData.name}
 Route: ${bookingData.from} → ${bookingData.to}
+Train: ${bookingData.trainNumber}
+Departure: ${bookingData.time || 'Any'}
 Fare: R${bookingData.fare}
-Valid: Today, any departure
+Valid: Today
 Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
     `.trim();
 
@@ -256,7 +318,7 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
                           {routeValidation.legs[0].from} → {routeValidation.legs[0].to}
                         </div>
                       </div>
-                      <div style={styles.transferArrow}>↓ Transfer</div>
+                      <div style={styles.transferArrow}>↓ Transfer at {routeValidation.legs[1].from}</div>
                       <div style={styles.transferLeg}>
                         <span style={styles.transferLegNumber}>2</span>
                         <strong>{routeValidation.legs[1].line}</strong>
@@ -271,6 +333,9 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
                       <span>~{routeValidation.stops * 5 + 10} minutes (inc. transfer)</span>
                       <span style={styles.statSeparator}>•</span>
                       <span style={styles.fareHighlight}>R{routeValidation.fare}</span>
+                    </div>
+                    <div style={styles.transferNotice}>
+                      ℹ️ Transfer routes require two separate bookings. Click "Book Now" for guidance.
                     </div>
                   </div>
                 </div>
@@ -490,6 +555,15 @@ const styles = {
     color: colors.neutral.gray700,
     fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     fontWeight: typography.weight.semibold,
+  },
+  transferNotice: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    background: colors.semantic.warning + '20',
+    borderRadius: '8px',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
+    color: colors.neutral.gray900,
+    fontStyle: 'italic',
   },
   errorText: {
     fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',

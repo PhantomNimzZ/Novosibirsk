@@ -2,62 +2,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../../api/config";
+import { metroLines } from "../../constants/metroLines";
 
-// Metro lines data (simplified from metroLines.js)
-const metroData = {
-  capetown: {
-    name: "Cape Town",
-    lines: {
-      "Central Line": ["Cape Town", "Mutual", "Salt River", "Observatory", "Newlands", "Claremont", "Wynberg", "Plumstead", "Retreat", "Muizenberg", "Simon's Town"],
-      "Southern Line": ["Cape Town", "Woodstock", "Mowbray", "Rosebank", "Rondebosch", "Newlands", "Claremont", "Kenilworth", "Fish Hoek"],
-      "Northern Line": ["Cape Town", "Parow", "Goodwood", "Bellville"],
-      "Cape Flats Line": ["Cape Town", "Langa", "Bonteheuwel", "Nyanga", "Khayelitsha"],
-      "Strand Line": ["Cape Town", "Somerset West", "Strand"],
-    }
-  },
-  durban: {
-    name: "Durban",
-    lines: {
-      "South Coast Line": ["Durban", "Isipingo", "Lotus Park", "Umbogintwini", "Umlazi"],
-      "North Coast Line": ["Durban", "Verulam", "KwaDukuza", "Stanger"],
-      "Inland Line": ["Durban", "Pinetown"],
-      "North Line": ["Durban", "Verulam"],
-    }
-  },
-  johannesburg: {
-    name: "Johannesburg",
-    lines: {
-      "Gautrain Main": ["Johannesburg", "Rosebank", "Sandton", "Midrand", "Centurion", "Pretoria"],
-      "East Rand Line": ["Johannesburg", "Germiston"],
-      "West Rand Line": ["Johannesburg", "Randfontein"],
-      "Soweto Line": ["Johannesburg", "Orlando"],
-      "Kempton Park Line": ["Johannesburg", "Kempton Park"],
-    }
-  },
-  pretoria: {
-    name: "Pretoria",
-    lines: {
-      "Central Line": ["Pretoria", "Centurion"],
-      "Mamelodi Line": ["Pretoria", "Mamelodi"],
-      "Mabopane Line": ["Pretoria", "Mabopane"],
-      "Hercules Line": ["Pretoria", "Hercules"],
-    }
-  },
-  portelizabeth: {
-    name: "Port Elizabeth",
-    lines: {
-      "Main Line": ["Port Elizabeth", "New Brighton", "Swartkops", "Motherwell", "Uitenhage"],
-    }
-  }
+// City ID mapping
+const cityMapping = {
+  "cape-town": "Cape Town",
+  "durban": "Durban",
+  "johannesburg": "Johannesburg",
+  "pretoria": "Pretoria",
+  "port-elizabeth": "Port Elizabeth",
 };
 
 const CreateCommuterBooking = () => {
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedLine, setSelectedLine] = useState("");
   const [fromStation, setFromStation] = useState("");
   const [toStation, setToStation] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
   const [availableTrains, setAvailableTrains] = useState([]);
   const [selectedTrain, setSelectedTrain] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,30 +32,26 @@ const CreateCommuterBooking = () => {
 
   const navigate = useNavigate();
 
-  // Available times for commuter trains
-  const commuterTimes = ["06:00", "12:00", "18:00"];
-
   // Get available lines for selected city
-  const availableLines = selectedCity ? Object.keys(metroData[selectedCity].lines) : [];
+  const availableLines = selectedCityId ? Object.keys(metroLines[selectedCityId]) : [];
 
   // Get stations for selected line
-  const availableStations = selectedCity && selectedLine 
-    ? metroData[selectedCity].lines[selectedLine] 
+  const availableStations = selectedCityId && selectedLine 
+    ? metroLines[selectedCityId][selectedLine] 
     : [];
 
-  // Fetch available trains when date/time/route selected
+  // Fetch available trains when route and date selected
   useEffect(() => {
-    if (fromStation && toStation && selectedDate && selectedTime) {
+    if (fromStation && toStation && selectedDate) {
       fetchAvailableTrains();
     }
-  }, [fromStation, toStation, selectedDate, selectedTime]);
+  }, [fromStation, toStation, selectedDate]);
 
   const fetchAvailableTrains = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("adminToken");
       
-      // Search for metro trains matching criteria
       const response = await fetch(
         `${API_BASE}/api/trains`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -104,18 +61,33 @@ const CreateCommuterBooking = () => {
 
       const allTrains = await response.json();
       
-      // Filter for metro trains matching route, date, and time
-      const matching = allTrains.filter(train => 
-        train.train?.includes("Metro Rail") &&
-        train.from === fromStation &&
-        train.to === toStation &&
-        train.time === selectedTime &&
+      // ✅ APPROACH B: Find trains where BOTH stations are on the route
+      const matching = allTrains.filter(train => {
+        if (!train.train?.includes("Metro Rail")) return false;
+        
+        // Check if this train serves both stations
+        try {
+          const stops = JSON.parse(train.intermediateStops || "[]");
+          const fromIndex = stops.indexOf(fromStation);
+          const toIndex = stops.indexOf(toStation);
+          
+          // Valid if both stations exist and from comes before to
+          return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+        } catch (error) {
+          // Fallback to exact match if intermediateStops not available
+          return train.from === fromStation && train.to === toStation;
+        }
+      }).filter(train => 
         new Date(train.date).toISOString().split('T')[0] === selectedDate
       );
 
+      console.log(`Found ${matching.length} trains that serve ${fromStation} → ${toStation} on ${selectedDate}`);
+      
       setAvailableTrains(matching);
       if (matching.length > 0) {
-        setSelectedTrain(matching[0]); // Auto-select first match
+        setSelectedTrain(matching[0]);
+      } else {
+        setSelectedTrain(null);
       }
       setLoading(false);
     } catch (error) {
@@ -130,7 +102,7 @@ const CreateCommuterBooking = () => {
   };
 
   const handleCityChange = (e) => {
-    setSelectedCity(e.target.value);
+    setSelectedCityId(e.target.value);
     setSelectedLine("");
     setFromStation("");
     setToStation("");
@@ -150,7 +122,7 @@ const CreateCommuterBooking = () => {
     e.preventDefault();
 
     if (!selectedTrain) {
-      alert("Please select a valid route and time");
+      alert("No trains available for this route and date. Please try a different date.");
       return;
     }
 
@@ -204,7 +176,7 @@ const CreateCommuterBooking = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Create Commuter Booking</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Book a metro/commuter train ticket for a passenger
+          Book a metro/commuter train ticket - valid for any train on selected date
         </p>
       </div>
 
@@ -218,20 +190,20 @@ const CreateCommuterBooking = () => {
               Select City
             </h3>
             <select
-              value={selectedCity}
+              value={selectedCityId}
               onChange={handleCityChange}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">-- Choose a city --</option>
-              {Object.entries(metroData).map(([key, data]) => (
-                <option key={key} value={key}>{data.name}</option>
+              {Object.entries(cityMapping).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
               ))}
             </select>
           </div>
 
           {/* Step 2: Select Line */}
-          {selectedCity && (
+          {selectedCityId && (
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                 <span className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mr-3">2</span>
@@ -291,53 +263,46 @@ const CreateCommuterBooking = () => {
             </div>
           )}
 
-          {/* Step 4: Select Date & Time */}
+          {/* Step 4: Select Date (NO TIME - General Ticket) */}
           {fromStation && toStation && (
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                 <span className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-sm font-bold mr-3">4</span>
-                Select Date & Time
+                Select Travel Date
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Departure Time</label>
-                  <select
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- Select time --</option>
-                    {commuterTimes.map(time => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date (General ticket - valid for any train)
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  required
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  ℹ️ Commuter tickets are valid for any train on this route for the selected date
+                </p>
               </div>
 
               {/* Train Preview */}
               {selectedTrain && (
                 <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">Selected Train</h4>
+                  <h4 className="font-semibold text-blue-900 mb-2">
+                    ✅ Trains Available on {selectedDate}
+                  </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-blue-700">Train:</span>{" "}
-                      <span className="font-medium">{selectedTrain.train}</span>
-                    </div>
                     <div>
                       <span className="text-blue-700">Route:</span>{" "}
                       <span className="font-medium">{selectedTrain.from} → {selectedTrain.to}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Available Times:</span>{" "}
+                      <span className="font-medium">
+                        {availableTrains.map(t => t.time).join(", ")}
+                      </span>
                     </div>
                     <div>
                       <span className="text-blue-700">Price:</span>{" "}
@@ -348,13 +313,25 @@ const CreateCommuterBooking = () => {
                       <span className="font-medium">General Seating</span>
                     </div>
                   </div>
+                  <p className="text-xs text-blue-600 mt-2">
+                    {availableTrains.length} train(s) available - ticket valid for any departure
+                  </p>
                 </div>
               )}
 
-              {availableTrains.length === 0 && selectedDate && selectedTime && !loading && (
+              {availableTrains.length === 0 && selectedDate && !loading && (
                 <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                  <p className="text-yellow-800">No trains available for this route, date, and time.</p>
-                  <p className="text-sm text-yellow-600 mt-1">Try a different date or time.</p>
+                  <p className="text-yellow-800 font-medium">No trains available for this route and date</p>
+                  <p className="text-sm text-yellow-600 mt-1">
+                    Try selecting a different date (March 10-16, 2026)
+                  </p>
+                </div>
+              )}
+
+              {loading && (
+                <div className="mt-4 flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Checking availability...</span>
                 </div>
               )}
             </div>

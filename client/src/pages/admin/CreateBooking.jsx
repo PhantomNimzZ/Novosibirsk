@@ -31,7 +31,13 @@ const CreateBooking = () => {
       if (!response.ok) throw new Error("Failed to fetch trains");
 
       const data = await response.json();
-      setTrains(data);
+      
+      // ✅ FIX: Filter out Metro Rail trains (only show long-distance)
+      const longDistanceTrains = data.filter(train => 
+        !train.train?.includes("Metro Rail")
+      );
+      
+      setTrains(longDistanceTrains);
     } catch (error) {
       console.error("Error fetching trains:", error);
       alert("Failed to load trains");

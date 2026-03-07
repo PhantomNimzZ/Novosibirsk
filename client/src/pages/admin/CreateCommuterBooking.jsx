@@ -61,17 +61,17 @@ const CreateCommuterBooking = () => {
 
       const allTrains = await response.json();
       
-      // ✅ APPROACH B: Find trains where BOTH stations are on the route
+      // ✅ APPROACH B: Find trains where route is in forward direction (UNIDIRECTIONAL)
       const matching = allTrains.filter(train => {
         if (!train.train?.includes("Metro Rail")) return false;
         
-        // Check if this train serves both stations
+        // Check if this train serves both stations in forward direction
         try {
           const stops = JSON.parse(train.intermediateStops || "[]");
           const fromIndex = stops.indexOf(fromStation);
           const toIndex = stops.indexOf(toStation);
           
-          // Valid if both stations exist and from comes before to
+          // ✅ UNIDIRECTIONAL: Only forward direction (matches seed data)
           return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
         } catch (error) {
           // Fallback to exact match if intermediateStops not available

@@ -1,14 +1,15 @@
 // src/components/admin/AdminSidebar.jsx
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ ADDED: For active state detection
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     alert("You have been logged out.");
-    navigate("/admin/login");
+    navigate("/admin-login");
   };
 
   return (
@@ -24,7 +25,7 @@ const AdminSidebar = () => {
         minHeight: "100vh",
       }}
     >
-      <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Admin Menu</h2>
+      <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem", color: "white" }}>Admin Menu</h2>
       
       <nav
         style={{
@@ -34,80 +35,158 @@ const AdminSidebar = () => {
           flexGrow: 1,
         }}
       >
+        {/* Dashboard */}
         <Link
-            to="/admin/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              location.pathname === "/admin" || location.pathname === "/admin/dashboard"
-                ? "bg-blue-600 text-white"  // ✅ Active: blue background, WHITE text
-                : "text-gray-700 hover:bg-gray-100"  // ✅ Inactive: gray text
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Dashboard
-          </Link>
-          
+          to="/admin"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.7rem",
+            borderRadius: "5px",
+            textDecoration: "none",
+            transition: "background-color 0.3s",
+            backgroundColor: (location.pathname === "/admin" || location.pathname === "/admin/dashboard") 
+              ? "#3498db" 
+              : "transparent",
+            color: "white", // ✅ Always white on dark background
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/admin" && location.pathname !== "/admin/dashboard") {
+              e.target.style.backgroundColor = "#34495e";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/admin" && location.pathname !== "/admin/dashboard") {
+              e.target.style.backgroundColor = "transparent";
+            }
+          }}
+        >
+          📊 Dashboard
+        </Link>
+
         {/* Long-Distance Booking */}
         <Link
           to="/admin/create-booking"
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-            location.pathname === "/admin/create-booking"
-              ? "bg-blue-600 text-white"
-              : "text-cyan-700 hover:bg-gray-100"
-          }`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.7rem",
+            borderRadius: "5px",
+            textDecoration: "none",
+            transition: "background-color 0.3s",
+            backgroundColor: location.pathname === "/admin/create-booking" 
+              ? "#3498db" 
+              : "transparent",
+            color: "white", // ✅ Always white
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/admin/create-booking") {
+              e.target.style.backgroundColor = "#34495e";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/admin/create-booking") {
+              e.target.style.backgroundColor = "transparent";
+            }
+          }}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>🚆 Long-Distance</span>
+          🚆 Long-Distance
         </Link>
 
         {/* Commuter Booking */}
         <Link
           to="/admin/create-commuter-booking"
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-            location.pathname === "/admin/create-commuter-booking"
-              ? "bg-blue-600 text-white"
-              : "text-cyan-700 hover:bg-gray-100"
-          }`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.7rem",
+            borderRadius: "5px",
+            textDecoration: "none",
+            transition: "background-color 0.3s",
+            backgroundColor: location.pathname === "/admin/create-commuter-booking" 
+              ? "#3498db" 
+              : "transparent",
+            color: "white", // ✅ Always white
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/admin/create-commuter-booking") {
+              e.target.style.backgroundColor = "#34495e";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/admin/create-commuter-booking") {
+              e.target.style.backgroundColor = "transparent";
+            }
+          }}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>🚇 Commuter</span>
+          🚇 Commuter
         </Link>
 
+        {/* Manage Bookings - FIXED ROUTE */}
         <Link
-            to="/admin/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              location.pathname === "/admin" || location.pathname === "/admin/dashboard"
-                ? "bg-blue-600 text-white"  // ✅ Active: blue background, WHITE text
-                : "text-gray-700 hover:bg-gray-100"  // ✅ Inactive: gray text
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Manage Bookings
-          </Link>
+          to="/admin/manage-bookings"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.7rem",
+            borderRadius: "5px",
+            textDecoration: "none",
+            transition: "background-color 0.3s",
+            backgroundColor: location.pathname === "/admin/manage-bookings" 
+              ? "#3498db" 
+              : "transparent",
+            color: "white", // ✅ Always white
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/admin/manage-bookings") {
+              e.target.style.backgroundColor = "#34495e";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/admin/manage-bookings") {
+              e.target.style.backgroundColor = "transparent";
+            }
+          }}
+        >
+          📋 Manage Bookings
+        </Link>
 
+        {/* Manage Trains - FIXED ROUTE */}
         <Link
-            to="/admin/dashboard"
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-              location.pathname === "/admin" || location.pathname === "/admin/dashboard"
-                ? "bg-blue-600 text-white"  // ✅ Active: blue background, WHITE text
-                : "text-gray-700 hover:bg-gray-100"  // ✅ Inactive: gray text
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            Manage Trains
-          </Link>
+          to="/admin/manage-trains"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.7rem",
+            borderRadius: "5px",
+            textDecoration: "none",
+            transition: "background-color 0.3s",
+            backgroundColor: location.pathname === "/admin/manage-trains" 
+              ? "#3498db" 
+              : "transparent",
+            color: "white", // ✅ Always white
+          }}
+          onMouseEnter={(e) => {
+            if (location.pathname !== "/admin/manage-trains") {
+              e.target.style.backgroundColor = "#34495e";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (location.pathname !== "/admin/manage-trains") {
+              e.target.style.backgroundColor = "transparent";
+            }
+          }}
+        >
+          🚆 Manage Trains
+        </Link>
       </nav>
 
-      {/* 🔥 Logout button at bottom */}
+      {/* Logout button at bottom */}
       <button
         onClick={handleLogout}
         style={{
@@ -118,9 +197,10 @@ const AdminSidebar = () => {
           borderRadius: "5px",
           color: "white",
           cursor: "pointer",
+          fontWeight: "bold",
         }}
       >
-        Logout
+        🚪 Logout
       </button>
     </aside>
   );

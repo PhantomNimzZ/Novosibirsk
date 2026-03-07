@@ -21,32 +21,32 @@ const TrainTable = ({ trains, onEdit, onDelete }) => {
   }
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="overflow-x-auto bg-white rounded-lg shadow" style={{ maxWidth: "100%" }}>
+      <table className="min-w-full divide-y divide-gray-200" style={{ fontSize: "0.875rem" }}>
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "180px" }}>
               Train
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "150px" }}>
               Route
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "120px" }}>
               Schedule
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "90px" }}>
               Class
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "80px" }}>
               Distance
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "70px" }}>
               Seats
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "80px" }}>
               Price
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: "140px" }}>
               Actions
             </th>
           </tr>
@@ -54,28 +54,28 @@ const TrainTable = ({ trains, onEdit, onDelete }) => {
         <tbody className="bg-white divide-y divide-gray-200">
           {trains.map((train) => (
             <tr key={train.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
+              <td className="px-3 py-3">
+                <div className="text-sm font-medium text-gray-900" style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {train.train}
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-xs text-gray-500">
                   {train.trainNumber}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-3 py-3">
                 <div className="text-sm text-gray-900">
                   {train.from} → {train.to}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-3 py-3 whitespace-nowrap">
                 <div className="text-sm text-gray-900">
                   {new Date(train.date).toLocaleDateString()}
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-xs text-gray-500">
                   {train.time}
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-3 py-3 whitespace-nowrap">
                 <span
                   className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     train.class === "Economy"
@@ -96,27 +96,29 @@ const TrainTable = ({ trains, onEdit, onDelete }) => {
                   <div className="text-xs text-gray-500">{train.duration}h</div>
                 )}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
                 {train.seats}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                 R{typeof train.price === 'number' 
                   ? train.price.toFixed(2) 
                   : parseFloat(train.price || 0).toFixed(2)}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div className="flex items-center gap-2">
+              <td className="px-3 py-3 whitespace-nowrap text-sm font-medium">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => onEdit(train)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 transition"
+                    style={{ fontSize: "0.75rem" }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(train.id)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition"
+                    className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 transition"
+                    style={{ fontSize: "0.75rem" }}
                   >
-                    Delete
+                    Del
                   </button>
                 </div>
               </td>

@@ -92,7 +92,7 @@ const CommuterCity = () => {
       
       const allTrains = await response.json();
       
-      // Find metro trains that include this route
+      // Find metro trains that include this route (UNIDIRECTIONAL - forward only)
       const matching = allTrains.filter(train => {
         if (!train.train?.includes("Metro Rail")) return false;
         
@@ -100,7 +100,10 @@ const CommuterCity = () => {
           const stops = JSON.parse(train.intermediateStops || "[]");
           const fromIndex = stops.indexOf(fromStation);
           const toIndex = stops.indexOf(toStation);
-          // Valid if both stations exist and from comes before to
+          // ✅ UNIDIRECTIONAL: Only forward direction (matches seed data)
+          // Train goes Durban(0) → Pinetown(1) → New Germany(2)
+          // Allows: Durban → Pinetown ✅, Pinetown → New Germany ✅
+          // Blocks: Pinetown → Durban ❌ (would need separate return train)
           return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
         } catch {
           // Fallback to exact match if intermediateStops not available

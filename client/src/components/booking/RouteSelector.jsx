@@ -37,10 +37,6 @@ const RouteSelector = ({ onRouteSelect }) => {
       
       // ✅ Get real route data with intermediate stops
       const routeData = getRouteData(origin.id, city.id);
-
-      // 🔍 DEBUG: Log what we're getting
-      console.log("🚂 Route Data:", routeData);
-      console.log("📍 Intermediate Stops:", routeData?.intermediateStops);
       
       if (onRouteSelect) {
         onRouteSelect({
@@ -53,8 +49,6 @@ const RouteSelector = ({ onRouteSelect }) => {
           intermediateStops: routeData?.intermediateStops || [], // ✅ Now includes intermediate stops!
         });
       }
-        // 🔍 DEBUG: Log what we're sending
-  console.log("📤 Sending to parent:", routeToSend);
     } else {
       setOrigin(city);
       setDestination(null);

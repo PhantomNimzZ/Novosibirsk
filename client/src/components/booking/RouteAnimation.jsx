@@ -1,462 +1,377 @@
-// client/src/components/booking/RouteAnimation.jsx
-import { useState, useEffect } from "react";
+// client/src/components/booking/RouteAnimation3D.jsx
+console.log("🔄 RouteAnimation component rendering");
+import { useState, useEffect, useRef } from "react";
+import * as THREE from 'three';
 import { colors, typography, spacing } from "../../styles/tokens";
 
 /**
- * Cinematic Route Animation - Battlefield 1 Operations Style
- * Features: Fog of War lifting, dramatic camera movements, front-line sweep
+ * 3D Cinematic Route Animation
+ * Professional flythrough animation with 3D landmarks and smooth camera movement
+ * Inspired by Google Earth, National Geographic intros
  */
 const RouteAnimation = ({ route, onComplete }) => {
-    // 🔍 DEBUG: Log what animation receives
-  console.log("🎬 Animation received route:", route);
-  console.log("🚉 Intermediate stops:", route.intermediateStops);
-  const [phase, setPhase] = useState('intro'); // intro → reveal → journey → arrival → complete
+  const mountRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  
+  const [currentStation, setCurrentStation] = useState(0);
+  const [isSkippable, setIsSkippable] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [fogReveal, setFogReveal] = useState(0); // 0-100 for fog lifting
-  const [cameraZoom, setCameraZoom] = useState(1.5); // Start zoomed in
-  const [cameraPan, setCameraPan] = useState({ x: 0, y: 0 });
 
-  // Station coordinates for the route
+  // Build station list with landmarks
   const stations = [
-    { name: route.from, x: 200, y: 300, arrival: '08:00' },
-    ...(route.intermediateStops || []).map((stop, i) => ({
-      name: stop.station || stop,
-      x: 200 + ((500 / (route.intermediateStops.length + 1)) * (i + 1)),
-      y: 300 + (Math.sin(i * 0.5) * 80),
-      arrival: stop.arrival || '',
-    })),
-    { name: route.to, x: 700, y: 300, arrival: route.arrivalTime || '22:00' },
+    { 
+      name: route.from, 
+      position: { x: 0, y: 0, z: 0 },
+      landmark: 'mountain', // Table Mountain for Cape Town
+      color: 0x4A90E2,
+    },
+    ...(route.intermediateStops || []).map((stop, i) => {
+      const totalStops = (route.intermediateStops?.length || 0) + 1;
+      const spacing = 150; // Space between stations
+      return {
+        name: stop.station,
+        position: { 
+          x: (i + 1) * spacing, 
+          y: Math.sin((i + 1) * 0.3) * 20, 
+          z: Math.cos((i + 1) * 0.3) * 30 
+        },
+        landmark: i % 2 === 0 ? 'tower' : 'cube', // Vary landmarks
+        color: 0x6B7280,
+      };
+    }),
+    { 
+      name: route.to, 
+      position: { 
+        x: ((route.intermediateStops?.length || 0) + 1) * 150, 
+        y: 0, 
+        z: 0 
+      },
+      landmark: 'city', // City skyline for destination
+      color: 0x10B981,
+    },
   ];
 
-  useEffect(() => {
-    const timeline = [
-      { phase: 'intro', duration: 1500 },
-      { phase: 'reveal', duration: 3000 },   // Fog of war lifting
-      { phase: 'journey', duration: 6000 },  // Train moving
-      { phase: 'arrival', duration: 2000 },
-      { phase: 'complete', duration: 1000 },
-    ];
+  console.log("🗺️ Station positions:", stations.map(s => ({ 
+    name: s.name, 
+    x: s.position.x, 
+    y: s.position.y, 
+    z: s.position.z 
+  })));
 
-    let currentTime = 0;
-    timeline.forEach(({ phase: nextPhase, duration }) => {
-      setTimeout(() => setPhase(nextPhase), currentTime);
-      currentTime += duration;
+  useEffect(() => {
+    if (!mountRef.current) return;
+    
+    let isMounted = true; // ✅ Prevent double execution
+
+    // ===== SCENE SETUP =====
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0a);
+    scene.fog = new THREE.Fog(0x0a0a0a, 100, 500);
+    sceneRef.current = scene;
+
+    // ===== CAMERA SETUP =====
+    const camera = new THREE.PerspectiveCamera(
+      75, // FOV - wider for cinematic feel
+      window.innerWidth / window.innerHeight,
+      0.1,
+      3000
+    );
+    // Start MUCH further back and higher for full overview
+    camera.position.set(-200, 150, 250); // WAY back and up!
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    // ===== RENDERER SETUP =====
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: false,
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    mountRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // ===== LIGHTING =====
+    // Ambient light (soft overall illumination)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    // Directional light (sun)
+    const sunLight = new THREE.DirectionalLight(0xffd9b3, 1.2);
+    sunLight.position.set(100, 200, 100);
+    sunLight.castShadow = true;
+    sunLight.shadow.camera.left = -200;
+    sunLight.shadow.camera.right = 200;
+    sunLight.shadow.camera.top = 200;
+    sunLight.shadow.camera.bottom = -200;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    scene.add(sunLight);
+
+    // ===== GROUND PLANE =====
+    const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a,
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -5;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // ===== CREATE LANDMARKS FOR EACH STATION =====
+    stations.forEach((station, index) => {
+      const group = new THREE.Group();
+      group.position.set(station.position.x, station.position.y, station.position.z);
+
+      // Create landmark based on type
+      let landmark;
+      
+      if (station.landmark === 'mountain') {
+        // Table Mountain style (pyramid)
+        const geometry = new THREE.ConeGeometry(20, 40, 4);
+        const material = new THREE.MeshStandardMaterial({ 
+          color: station.color,
+          roughness: 0.7,
+          metalness: 0.2,
+        });
+        landmark = new THREE.Mesh(geometry, material);
+        landmark.position.y = 20;
+        landmark.castShadow = true;
+        
+      } else if (station.landmark === 'city') {
+        // City skyline (multiple towers)
+        for (let i = 0; i < 5; i++) {
+          const height = 30 + Math.random() * 40;
+          const geometry = new THREE.BoxGeometry(8, height, 8);
+          const material = new THREE.MeshStandardMaterial({ 
+            color: station.color,
+            roughness: 0.4,
+            metalness: 0.6,
+          });
+          const building = new THREE.Mesh(geometry, material);
+          building.position.x = (i - 2) * 12;
+          building.position.y = height / 2;
+          building.castShadow = true;
+          group.add(building);
+        }
+        
+      } else if (station.landmark === 'tower') {
+        // Simple tower
+        const geometry = new THREE.CylinderGeometry(5, 8, 35, 8);
+        const material = new THREE.MeshStandardMaterial({ 
+          color: station.color,
+          roughness: 0.6,
+          metalness: 0.3,
+        });
+        landmark = new THREE.Mesh(geometry, material);
+        landmark.position.y = 17.5;
+        landmark.castShadow = true;
+        
+      } else {
+        // Default cube (Big Hole style)
+        const geometry = new THREE.BoxGeometry(25, 15, 25);
+        const material = new THREE.MeshStandardMaterial({ 
+          color: station.color,
+          roughness: 0.8,
+          metalness: 0.1,
+        });
+        landmark = new THREE.Mesh(geometry, material);
+        landmark.position.y = 7.5;
+        landmark.castShadow = true;
+      }
+
+      if (landmark) group.add(landmark);
+
+      // Add platform/base
+      const platformGeometry = new THREE.CylinderGeometry(30, 30, 2, 32);
+      const platformMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x2a2a2a,
+        roughness: 0.9,
+      });
+      const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+      platform.position.y = 0;
+      platform.receiveShadow = true;
+      group.add(platform);
+
+      // Add glow ring
+      const ringGeometry = new THREE.RingGeometry(32, 35, 32);
+      const ringMaterial = new THREE.MeshBasicMaterial({ 
+        color: station.color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.5;
+      group.add(ring);
+
+      scene.add(group);
     });
 
-    // Fog reveal animation (sweeping effect)
-    const fogInterval = setInterval(() => {
-      setFogReveal((prev) => {
-        if (prev >= 100) return 100;
-        return prev + 1.5; // Smooth fog lifting
-      });
-    }, 30);
+    // ===== CAMERA PATH ANIMATION =====
+    let animationProgress = 0;
+    const totalDuration = 12000; // 12 seconds total
+    
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const currentTime = Date.now();
+      const elapsed = currentTime - startTime;
+      animationProgress = Math.min(elapsed / totalDuration, 1);
 
-    // Progress animation during journey phase
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 100;
-        return prev + 0.8; // Slower, more dramatic
-      });
-    }, 100);
+      console.log("🎬 Camera animating, progress:", animationProgress.toFixed(2)); // Debug log
 
-    // Camera zoom and pan animation
-    const cameraInterval = setInterval(() => {
-      setCameraZoom((prev) => {
-        if (prev <= 1) return 1;
-        return prev - 0.005; // Slow zoom out
-      });
-      
-      // Pan camera to follow the route
-      setCameraPan((prev) => ({
-        x: prev.x + (progress * 0.5 - prev.x) * 0.05,
-        y: prev.y + (Math.sin(progress * 0.1) * 10 - prev.y) * 0.05,
-      }));
-    }, 50);
+      // Calculate which station we're at/heading to
+      const totalStations = stations.length;
+      const progressPerStation = 1 / (totalStations - 1);
+      const stationIndex = Math.floor(animationProgress / progressPerStation);
+      const stationProgress = (animationProgress % progressPerStation) / progressPerStation;
 
-    // Notify parent when complete
-    setTimeout(() => {
-      if (onComplete) onComplete();
-    }, currentTime);
+      setProgress(animationProgress * 100);
+      setCurrentStation(Math.min(stationIndex, totalStations - 1));
 
-    return () => {
-      clearInterval(fogInterval);
-      clearInterval(progressInterval);
-      clearInterval(cameraInterval);
+      // Only proceed if still mounted
+      if (!isMounted) {
+        console.log("🛑 Component unmounted, stopping animation");
+        return;
+      }
+
+      if (stationIndex < totalStations - 1) {
+        const currentPos = stations[stationIndex].position;
+        const nextPos = stations[stationIndex + 1].position;
+
+        // Easing function (ease-in-out cubic)
+        const ease = (t) => t < 0.5 
+          ? 4 * t * t * t 
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        const easedProgress = ease(stationProgress);
+
+        // Interpolate camera position (follow along but stay back)
+        camera.position.x = THREE.MathUtils.lerp(
+          currentPos.x - 100, // Further back from X
+          nextPos.x - 100,
+          easedProgress
+        );
+        camera.position.y = THREE.MathUtils.lerp(
+          currentPos.y + 120, // Higher up
+          nextPos.y + 120,
+          easedProgress
+        ) + Math.sin(animationProgress * Math.PI * 4) * 8; // More pronounced bobbing
+        camera.position.z = THREE.MathUtils.lerp(
+          currentPos.z + 200, // Further back from Z
+          nextPos.z + 200,
+          easedProgress
+        );
+
+        // Look at point ahead
+        const lookAtX = THREE.MathUtils.lerp(
+          currentPos.x,
+          nextPos.x,
+          easedProgress
+        );
+        const lookAtY = THREE.MathUtils.lerp(
+          currentPos.y,
+          nextPos.y,
+          easedProgress
+        ) + 20;
+        const lookAtZ = THREE.MathUtils.lerp(
+          currentPos.z,
+          nextPos.z,
+          easedProgress
+        );
+
+        camera.lookAt(lookAtX, lookAtY, lookAtZ);
+        
+        // Debug: Log camera movement every 10 frames
+        if (Math.floor(animationProgress * 100) % 10 === 0) {
+          console.log("📍 Camera:", 
+            `x:${camera.position.x.toFixed(0)}`, 
+            `y:${camera.position.y.toFixed(0)}`, 
+            `z:${camera.position.z.toFixed(0)}`,
+            `| Station ${stationIndex} → ${stationIndex + 1}`
+          );
+        }
+      }
+
+      renderer.render(scene, camera);
+
+      if (animationProgress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        console.log("🎬 Animation complete!");
+        setTimeout(() => {
+          if (onComplete) onComplete();
+        }, 1000);
+      }
     };
-  }, [route, onComplete, progress]);
 
-  // Calculate train position
-  const trainProgress = progress / 100;
-  const trainX = stations[0].x + ((stations[stations.length - 1].x - stations[0].x) * trainProgress);
-  const trainY = stations[0].y + ((stations[stations.length - 1].y - stations[0].y) * trainProgress);
+    // Allow skipping after 2 seconds
+    setTimeout(() => setIsSkippable(true), 2000);
+
+    // ✅ START THE ANIMATION LOOP (only if still mounted)!
+    if (!isMounted) return;
+    console.log("🎬 Starting animation loop...");
+    animate();
+
+    // ===== CLEANUP =====
+    return () => {
+      isMounted = false; // ✅ Mark as unmounted
+      console.log("🧹 Cleaning up animation...");
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (mountRef.current && renderer.domElement && mountRef.current.contains(renderer.domElement)) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []); // ✅ Empty deps - run once only
+
+  const handleSkip = () => {
+    if (isSkippable && onComplete) {
+      onComplete();
+    }
+  };
 
   return (
     <div style={styles.container}>
-      {/* Film grain overlay */}
+      {/* 3D Canvas Mount Point */}
+      <div ref={mountRef} style={styles.canvas} />
+
+      {/* Text Overlay */}
+      <div style={styles.overlay}>
+        {currentStation < stations.length && (
+          <div style={styles.stationInfo}>
+            <div style={styles.stationName}>
+              {stations[currentStation].name}
+            </div>
+            <div style={styles.progressBar}>
+              <div style={{...styles.progressFill, width: `${progress}%`}} />
+            </div>
+          </div>
+        )}
+
+        {/* Skip Button */}
+        {isSkippable && (
+          <button onClick={handleSkip} style={styles.skipButton}>
+            Skip Animation →
+          </button>
+        )}
+      </div>
+
+      {/* Film grain */}
       <div style={styles.filmGrain} />
-
-      {/* Vignette */}
-      <div style={styles.vignette} />
-
-      {/* Animated Map with Camera Movement */}
-      <div style={{
-        ...styles.mapContainer,
-        transform: `scale(${cameraZoom}) translate(${-cameraPan.x}px, ${-cameraPan.y}px)`,
-      }}>
-        <svg viewBox="0 0 900 600" style={styles.svg}>
-          {/* Map background - vintage paper texture */}
-          <defs>
-            {/* Sepia filter for vintage look */}
-            <filter id="sepia">
-              <feColorMatrix
-                type="matrix"
-                values="0.393 0.769 0.189 0 0
-                        0.349 0.686 0.168 0 0
-                        0.272 0.534 0.131 0 0
-                        0 0 0 1 0"
-              />
-            </filter>
-
-            {/* Fog of war gradient */}
-            <linearGradient id="fogGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#1a1a1a" stopOpacity="0.95" />
-              <stop offset={`${fogReveal}%`} stopColor="#1a1a1a" stopOpacity="0" />
-              <stop offset="100%" stopColor="#1a1a1a" stopOpacity="0.95" />
-            </linearGradient>
-
-            {/* Animated sweep gradient */}
-            <linearGradient id="sweepGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={colors.accent.orange} stopOpacity="0" />
-              <stop offset={`${fogReveal - 5}%`} stopColor={colors.accent.orange} stopOpacity="0.8" />
-              <stop offset={`${fogReveal}%`} stopColor={colors.accent.orange} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {/* Base map */}
-          <rect width="900" height="600" fill="#2a2520" />
-
-          {/* Topographic lines (decorative) */}
-          {[...Array(8)].map((_, i) => (
-            <path
-              key={`topo-${i}`}
-              d={`M 0,${100 + i * 60} Q 225,${80 + i * 60} 450,${100 + i * 60} T 900,${100 + i * 60}`}
-              stroke="#3a3530"
-              strokeWidth="1"
-              fill="none"
-              opacity="0.3"
-            />
-          ))}
-
-          {/* Route path (hidden under fog initially) */}
-          <path
-            d={stations.map((s, i) => 
-              i === 0 ? `M ${s.x},${s.y}` : `L ${s.x},${s.y}`
-            ).join(' ')}
-            stroke={colors.accent.orange}
-            strokeWidth="8"
-            fill="none"
-            strokeDasharray={phase === 'journey' ? "none" : "2000"}
-            strokeDashoffset={phase === 'journey' ? 0 : 2000 - (fogReveal * 20)}
-            style={styles.routePath}
-            opacity={phase === 'reveal' || phase === 'journey' || phase === 'arrival' || phase === 'complete' ? 1 : 0}
-          />
-
-          {/* Sweeping front-line effect */}
-          {(phase === 'reveal' || phase === 'journey') && (
-            <rect
-              x="0"
-              y="0"
-              width={`${fogReveal * 9}px`}
-              height="600"
-              fill="url(#sweepGradient)"
-              opacity="0.4"
-            />
-          )}
-
-          {/* Station markers (revealed progressively) */}
-          {stations.map((station, index) => {
-            const stationRevealProgress = (fogReveal / 100) * stations.length;
-            const isRevealed = index < stationRevealProgress;
-            const isOrigin = index === 0;
-            const isDestination = index === stations.length - 1;
-            const isPassed = phase === 'journey' && (index / stations.length) < trainProgress;
-
-            return (
-              <g 
-                key={index} 
-                style={{ 
-                  opacity: isRevealed || phase === 'arrival' || phase === 'complete' ? 1 : 0,
-                  transition: 'opacity 0.8s ease-out',
-                }}
-              >
-                {/* Glow effect for active stations */}
-                {isPassed && (
-                  <circle
-                    cx={station.x}
-                    cy={station.y}
-                    r={isOrigin || isDestination ? "35" : "25"}
-                    fill={colors.accent.orange}
-                    opacity="0.2"
-                    style={styles.stationGlow}
-                  />
-                )}
-
-                {/* Marker */}
-                <circle
-                  cx={station.x}
-                  cy={station.y}
-                  r={isOrigin || isDestination ? "22" : "14"}
-                  fill={isPassed ? colors.semantic.success : colors.neutral.gray700}
-                  stroke={isPassed ? colors.accent.orange : colors.neutral.gray500}
-                  strokeWidth="4"
-                  style={{
-                    ...styles.stationMarker,
-                    animation: isPassed ? 'pulse 2s ease-in-out infinite' : 'none',
-                  }}
-                />
-
-                {/* Inner dot */}
-                <circle
-                  cx={station.x}
-                  cy={station.y}
-                  r={isOrigin || isDestination ? "10" : "6"}
-                  fill={isPassed ? colors.accent.orange : colors.neutral.gray400}
-                />
-
-                {/* Station name */}
-                <text
-                  x={station.x}
-                  y={station.y - 35}
-                  textAnchor="middle"
-                  fill={colors.neutral.white}
-                  fontSize={isOrigin || isDestination ? "20" : "16"}
-                  fontWeight="bold"
-                  style={styles.stationText}
-                  opacity={isRevealed ? 1 : 0}
-                >
-                  {station.name}
-                </text>
-
-                {/* Arrival time */}
-                {station.arrival && (
-                  <text
-                    x={station.x}
-                    y={station.y + 50}
-                    textAnchor="middle"
-                    fill={colors.neutral.white}
-                    fontSize="14"
-                    opacity="0.7"
-                    fontFamily="monospace"
-                  >
-                    {station.arrival}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-
-          {/* Animated train (appears during journey phase) */}
-          {phase === 'journey' && (
-            <g>
-              {/* Train glow */}
-              <circle
-                cx={trainX}
-                cy={trainY}
-                r="30"
-                fill={colors.primary.blue}
-                opacity="0.3"
-                style={styles.trainGlow}
-              />
-
-              {/* Train body */}
-              <circle
-                cx={trainX}
-                cy={trainY}
-                r="16"
-                fill={colors.primary.blue}
-                stroke={colors.neutral.white}
-                strokeWidth="3"
-                style={styles.trainIcon}
-              />
-
-              {/* Train emoji */}
-              <text
-                x={trainX}
-                y={trainY - 35}
-                textAnchor="middle"
-                fontSize="32"
-                style={styles.trainEmoji}
-              >
-                🚆
-              </text>
-
-              {/* Speed lines */}
-              <line
-                x1={trainX - 40}
-                y1={trainY}
-                x2={trainX - 60}
-                y2={trainY}
-                stroke={colors.neutral.white}
-                strokeWidth="2"
-                opacity="0.4"
-                style={styles.speedLine}
-              />
-              <line
-                x1={trainX - 40}
-                y1={trainY - 10}
-                x2={trainX - 55}
-                y2={trainY - 10}
-                stroke={colors.neutral.white}
-                strokeWidth="2"
-                opacity="0.3"
-                style={styles.speedLine}
-              />
-              <line
-                x1={trainX - 40}
-                y1={trainY + 10}
-                x2={trainX - 55}
-                y2={trainY + 10}
-                stroke={colors.neutral.white}
-                strokeWidth="2"
-                opacity="0.3"
-                style={styles.speedLine}
-              />
-            </g>
-          )}
-
-          {/* Fog of War overlay */}
-          {(phase === 'intro' || phase === 'reveal') && (
-            <rect
-              x="0"
-              y="0"
-              width="900"
-              height="600"
-              fill="url(#fogGradient)"
-              style={{ transition: 'opacity 1s ease-out' }}
-            />
-          )}
-        </svg>
-      </div>
-
-      {/* Text Overlays with Battlefield 1 style */}
-      <div style={styles.textOverlay}>
-        {phase === 'intro' && (
-          <div style={styles.phaseText}>
-            <div style={styles.operationBadge}>OPERATION</div>
-            <h1 style={styles.bigText}>YOUR JOURNEY</h1>
-            <div style={styles.dividerLine} />
-            <p style={styles.subText}>Departing from {route.from}</p>
-          </div>
-        )}
-
-        {phase === 'reveal' && (
-          <div style={styles.phaseText}>
-            <div style={styles.revealmessage}>
-              <div style={styles.compassIcon}>⊕</div>
-              <p style={styles.revealText}>Plotting route...</p>
-            </div>
-          </div>
-        )}
-
-        {phase === 'journey' && (
-          <div style={styles.phaseText}>
-            <div style={styles.progressContainer}>
-              {/* Military-style progress indicator */}
-              <div style={styles.progressHeader}>
-                <span style={styles.progressLabel}>EN ROUTE</span>
-                <span style={styles.progressPercent}>{Math.round(progress)}%</span>
-              </div>
-              <div style={styles.progressBar}>
-                <div style={{...styles.progressFill, width: `${progress}%`}} />
-              </div>
-              <div style={styles.routeStats}>
-                <div style={styles.statItem}>
-                  <div style={styles.statLabel}>DISTANCE</div>
-                  <div style={styles.statValue}>{route.distance} km</div>
-                </div>
-                <div style={styles.statDivider}>|</div>
-                <div style={styles.statItem}>
-                  <div style={styles.statLabel}>DURATION</div>
-                  <div style={styles.statValue}>~{route.duration}h</div>
-                </div>
-                <div style={styles.statDivider}>|</div>
-                <div style={styles.statItem}>
-                  <div style={styles.statLabel}>ETA</div>
-                  <div style={styles.statValue}>{route.arrivalTime || '22:00'}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {phase === 'arrival' && (
-          <div style={styles.phaseText}>
-            <div style={styles.operationBadge}>DESTINATION</div>
-            <h1 style={styles.bigText}>{route.to}</h1>
-            <div style={styles.dividerLine} />
-            <p style={styles.subText}>Arrival: {route.arrivalTime || '22:00'}</p>
-          </div>
-        )}
-
-        {phase === 'complete' && (
-          <div style={styles.phaseText}>
-            <div style={styles.checkmark}>✓</div>
-            <h2 style={styles.completeText}>ROUTE CONFIRMED</h2>
-          </div>
-        )}
-      </div>
-
-      {/* Cinematic letterbox bars */}
-      <div style={styles.letterboxTop} />
-      <div style={styles.letterboxBottom} />
-
-      {/* Corner decorations (BF1 style) */}
-      <div style={styles.cornerTopLeft}>╔</div>
-      <div style={styles.cornerTopRight}>╗</div>
-      <div style={styles.cornerBottomLeft}>╚</div>
-      <div style={styles.cornerBottomRight}>╝</div>
-
-      {/* Inline CSS for animations */}
-      <style>{`
-        @keyframes fadeInText {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.15); opacity: 0.8; }
-        }
-
-        @keyframes checkmarkPop {
-          0% { transform: scale(0) rotate(-180deg); }
-          60% { transform: scale(1.2) rotate(10deg); }
-          100% { transform: scale(1) rotate(0deg); }
-        }
-
-        @keyframes glow {
-          0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 107, 53, 0.6)); }
-          50% { filter: drop-shadow(0 0 20px rgba(255, 107, 53, 0.9)); }
-        }
-
-        @keyframes filmGrainAnim {
-          0%, 100% { transform: translate(0, 0); }
-          10% { transform: translate(-5%, -10%); }
-          20% { transform: translate(-15%, 5%); }
-          30% { transform: translate(7%, -25%); }
-          40% { transform: translate(-5%, 25%); }
-          50% { transform: translate(-15%, 10%); }
-          60% { transform: translate(15%, 0%); }
-          70% { transform: translate(0%, 15%); }
-          80% { transform: translate(3%, 35%); }
-          90% { transform: translate(-10%, 10%); }
-        }
-
-        @keyframes speedLineDash {
-          from { transform: translateX(0); opacity: 0.6; }
-          to { transform: translateX(-20px); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 };
@@ -469,277 +384,77 @@ const styles = {
     width: '100vw',
     height: '100vh',
     zIndex: 9999,
-    background: '#0a0a0a',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    background: '#000',
     overflow: 'hidden',
   },
-  filmGrain: {
-    position: 'absolute',
-    top: '-50%',
-    left: '-50%',
-    width: '200%',
-    height: '200%',
-    background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")',
-    opacity: 0.15,
-    pointerEvents: 'none',
-    zIndex: 10,
-    animation: 'filmGrainAnim 8s steps(10) infinite',
+  canvas: {
+    width: '100%',
+    height: '100%',
   },
-  vignette: {
+  overlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    background: 'radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.8) 100%)',
     pointerEvents: 'none',
-    zIndex: 9,
-  },
-  mapContainer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    transformOrigin: 'center center',
-  },
-  svg: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    filter: 'contrast(1.1) brightness(0.95)',
-  },
-  routePath: {
-    transition: 'stroke-dashoffset 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    animation: 'glow 2s ease-in-out infinite',
-  },
-  stationGlow: {
-    animation: 'pulse 3s ease-in-out infinite',
-  },
-  stationMarker: {
-    transition: 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-  },
-  stationText: {
-    textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.8)',
-    transition: 'opacity 0.8s ease-out',
-    fontFamily: "'Courier New', monospace",
-    letterSpacing: '0.05em',
-  },
-  trainIcon: {
-    filter: 'drop-shadow(0 0 12px rgba(0, 102, 204, 0.9))',
-    transition: 'all 0.3s ease-out',
-  },
-  trainGlow: {
-    animation: 'pulse 1.5s ease-in-out infinite',
-  },
-  trainEmoji: {
-    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
-  },
-  speedLine: {
-    animation: 'speedLineDash 0.5s linear infinite',
-  },
-  textOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 11,
-    pointerEvents: 'none',
-  },
-  phaseText: {
-    textAlign: 'center',
-    animation: 'fadeInText 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    color: colors.neutral.white,
-  },
-  operationBadge: {
-    display: 'inline-block',
-    padding: '8px 24px',
-    background: 'rgba(255, 107, 53, 0.2)',
-    border: `2px solid ${colors.accent.orange}`,
-    fontSize: '14px',
-    fontWeight: 'bold',
-    letterSpacing: '0.2em',
-    marginBottom: spacing.lg,
-    fontFamily: "'Courier New', monospace",
-  },
-  bigText: {
-    fontSize: '4rem',
-    fontWeight: 900,
-    margin: `${spacing.md} 0`,
-    textShadow: '0 4px 12px rgba(0,0,0,0.9), 0 0 20px rgba(255,107,53,0.3)',
-    letterSpacing: '0.1em',
-    fontFamily: "'Georgia', serif",
-    textTransform: 'uppercase',
-  },
-  dividerLine: {
-    width: '200px',
-    height: '2px',
-    background: colors.accent.orange,
-    margin: `${spacing.md} auto`,
-    boxShadow: '0 0 10px rgba(255, 107, 53, 0.5)',
-  },
-  subText: {
-    fontSize: typography.scale.xl,
-    margin: 0,
-    opacity: 0.9,
-    textShadow: '0 2px 6px rgba(0,0,0,0.8)',
-    fontFamily: "'Courier New', monospace",
-    letterSpacing: '0.05em',
-  },
-  revealmessage: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  compassIcon: {
-    fontSize: '60px',
-    animation: 'pulse 2s ease-in-out infinite',
-    textShadow: '0 0 20px rgba(255, 107, 53, 0.8)',
-  },
-  revealText: {
-    fontSize: typography.scale['2xl'],
-    fontFamily: "'Courier New', monospace",
-    letterSpacing: '0.1em',
-    textShadow: '0 2px 8px rgba(0,0,0,0.9)',
-  },
-  progressContainer: {
-    width: '500px',
-    maxWidth: '85vw',
-  },
-  progressHeader: {
-    display: 'flex',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    fontFamily: "'Courier New', monospace",
+    padding: '60px',
   },
-  progressLabel: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    letterSpacing: '0.2em',
-    color: colors.accent.orange,
+  stationInfo: {
+    alignSelf: 'flex-start',
   },
-  progressPercent: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: colors.neutral.white,
+  stationName: {
+    fontSize: '4rem',
+    fontWeight: '900',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em',
+    textShadow: '0 4px 20px rgba(0,0,0,0.8), 0 0 40px rgba(255,255,255,0.2)',
+    marginBottom: '20px',
+    animation: 'fadeInUp 0.8s ease-out',
+    fontFamily: "'Arial Black', sans-serif",
   },
   progressBar: {
-    width: '100%',
-    height: '12px',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: `2px solid ${colors.accent.orange}`,
+    width: '400px',
+    height: '4px',
+    background: 'rgba(255,255,255,0.2)',
+    borderRadius: '2px',
     overflow: 'hidden',
-    marginBottom: spacing.lg,
   },
   progressFill: {
     height: '100%',
-    background: `linear-gradient(90deg, ${colors.accent.orange} 0%, #ff8c42 100%)`,
+    background: 'linear-gradient(90deg, #4A90E2 0%, #10B981 100%)',
     transition: 'width 0.3s ease-out',
-    boxShadow: `0 0 20px ${colors.accent.orange}`,
+    boxShadow: '0 0 20px rgba(74, 144, 226, 0.8)',
   },
-  routeStats: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    fontFamily: "'Courier New', monospace",
+  skipButton: {
+    alignSelf: 'flex-end',
+    padding: '12px 24px',
+    background: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(10px)',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderRadius: '8px',
+    color: '#fff',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    pointerEvents: 'all',
+    transition: 'all 0.3s ease',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
-  statItem: {
-    textAlign: 'center',
-  },
-  statLabel: {
-    fontSize: '12px',
-    opacity: 0.7,
-    letterSpacing: '0.15em',
-    marginBottom: '4px',
-  },
-  statValue: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: colors.accent.orange,
-  },
-  statDivider: {
-    fontSize: '20px',
-    opacity: 0.3,
-  },
-  checkmark: {
-    fontSize: '100px',
-    color: colors.semantic.success,
-    animation: 'checkmarkPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-    marginBottom: spacing.md,
-    textShadow: '0 0 30px rgba(76, 175, 80, 0.8)',
-  },
-  completeText: {
-    fontSize: '2.5rem',
-    fontWeight: 'bold',
-    margin: 0,
-    letterSpacing: '0.2em',
-    fontFamily: "'Courier New', monospace",
-    textShadow: '0 4px 12px rgba(0,0,0,0.9)',
-  },
-  letterboxTop: {
+  filmGrain: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
-    height: '100px',
-    background: 'linear-gradient(180deg, #000 0%, transparent 100%)',
-    zIndex: 12,
-  },
-  letterboxBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: '100%',
-    height: '100px',
-    background: 'linear-gradient(0deg, #000 0%, transparent 100%)',
-    zIndex: 12,
-  },
-  cornerTopLeft: {
-    position: 'absolute',
-    top: '100px',
-    left: '40px',
-    fontSize: '40px',
-    color: colors.accent.orange,
-    opacity: 0.4,
-    zIndex: 13,
-    fontFamily: 'monospace',
-  },
-  cornerTopRight: {
-    position: 'absolute',
-    top: '100px',
-    right: '40px',
-    fontSize: '40px',
-    color: colors.accent.orange,
-    opacity: 0.4,
-    zIndex: 13,
-    fontFamily: 'monospace',
-  },
-  cornerBottomLeft: {
-    position: 'absolute',
-    bottom: '100px',
-    left: '40px',
-    fontSize: '40px',
-    color: colors.accent.orange,
-    opacity: 0.4,
-    zIndex: 13,
-    fontFamily: 'monospace',
-  },
-  cornerBottomRight: {
-    position: 'absolute',
-    bottom: '100px',
-    right: '40px',
-    fontSize: '40px',
-    color: colors.accent.orange,
-    opacity: 0.4,
-    zIndex: 13,
-    fontFamily: 'monospace',
+    height: '100%',
+    background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")',
+    opacity: 0.08,
+    pointerEvents: 'none',
   },
 };
 

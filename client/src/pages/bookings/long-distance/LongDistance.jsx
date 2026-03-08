@@ -178,6 +178,7 @@ const LongDistance = () => {
             distance: selectedRoute.distance,
             duration: selectedRoute.duration,
             arrivalTime: selectedDateTime?.time || "22:00",
+            intermediateStops: selectedRoute.intermediateStops || [], // ✅ ADD THIS LINE!s
           }}
           onComplete={handleAnimationComplete}
         />

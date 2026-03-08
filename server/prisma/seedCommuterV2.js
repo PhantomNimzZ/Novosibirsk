@@ -128,6 +128,17 @@ function calculateDuration(numStops) {
 async function seedCommuterTrains() {
   console.log('🚇 Seeding FULL LINE commuter trains (Approach B - Realistic)...\n');
   
+  // ✅ DELETE EXISTING METRO RAIL TRAINS FIRST (prevent duplicates)
+  console.log('🗑️  Cleaning up existing Metro Rail trains...');
+  const deleted = await prisma.train.deleteMany({
+    where: {
+      train: {
+        contains: 'Metro Rail'
+      }
+    }
+  });
+  console.log(`   Deleted ${deleted.count} existing Metro Rail trains\n`);
+  
   const times = ['06:00', '12:00', '18:00'];
   const startDate = new Date(); // ✅ Start from TODAY
   const daysToSeed = 7;

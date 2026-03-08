@@ -1,6 +1,7 @@
 // client/src/components/booking/RouteSelector.jsx
 import { useState } from "react";
 import { colors, typography, spacing } from "../../styles/tokens";
+import { getRouteData } from "../../constants/longDistanceRoutes";
 
 /**
  * Interactive Route Selector (Mobile-Responsive)
@@ -34,16 +35,26 @@ const RouteSelector = ({ onRouteSelect }) => {
       const distance = calculateDistance(origin, city);
       const duration = Math.round(distance / 80);
       
+      // ✅ Get real route data with intermediate stops
+      const routeData = getRouteData(origin.id, city.id);
+
+      // 🔍 DEBUG: Log what we're getting
+      console.log("🚂 Route Data:", routeData);
+      console.log("📍 Intermediate Stops:", routeData?.intermediateStops);
+      
       if (onRouteSelect) {
         onRouteSelect({
           from: origin.name,
           to: city.name,
           fromId: origin.id,
           toId: city.id,
-          distance,
-          duration,
+          distance: routeData?.distance || distance,
+          duration: routeData?.duration || duration,
+          intermediateStops: routeData?.intermediateStops || [], // ✅ Now includes intermediate stops!
         });
       }
+        // 🔍 DEBUG: Log what we're sending
+  console.log("📤 Sending to parent:", routeToSend);
     } else {
       setOrigin(city);
       setDestination(null);

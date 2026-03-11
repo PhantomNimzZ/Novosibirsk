@@ -1,8 +1,8 @@
 // client/src/components/booking/RouteAnimation3D.jsx
-console.log("🔄 RouteAnimation component rendering");
 import { useState, useEffect, useRef } from "react";
 import * as THREE from 'three';
 import { colors, typography, spacing } from "../../styles/tokens";
+import { getLandmarkForCity } from "../../constants/landmarks";
 
 /**
  * 3D Cinematic Route Animation
@@ -15,6 +15,8 @@ const RouteAnimation = ({ route, onComplete }) => {
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
   const animationFrameRef = useRef(null);
+  const hasInitialized = useRef(false); // ✅ Singleton flag that survives remounts
+  const isMountedRef = useRef(true); // ✅ Track mount state across async operations
   
   const [currentStation, setCurrentStation] = useState(0);
   const [isSkippable, setIsSkippable] = useState(false);
@@ -30,7 +32,7 @@ const RouteAnimation = ({ route, onComplete }) => {
     },
     ...(route.intermediateStops || []).map((stop, i) => {
       const totalStops = (route.intermediateStops?.length || 0) + 1;
-      const spacing = 150; // Space between stations
+      const spacing = 400; // ✅ INCREASED: Cities now 400 units apart for cinematic scale
       return {
         name: stop.station,
         position: { 
@@ -45,7 +47,7 @@ const RouteAnimation = ({ route, onComplete }) => {
     { 
       name: route.to, 
       position: { 
-        x: ((route.intermediateStops?.length || 0) + 1) * 150, 
+        x: ((route.intermediateStops?.length || 0) + 1) * 400, // ✅ INCREASED spacing
         y: 0, 
         z: 0 
       },
@@ -54,34 +56,91 @@ const RouteAnimation = ({ route, onComplete }) => {
     },
   ];
 
-  console.log("🗺️ Station positions:", stations.map(s => ({ 
-    name: s.name, 
-    x: s.position.x, 
-    y: s.position.y, 
-    z: s.position.z 
-  })));
+  // Removed debug log - stations are properly positioned
 
   useEffect(() => {
     if (!mountRef.current) return;
     
-    let isMounted = true; // ✅ Prevent double execution
+    // ✅ CRITICAL: Use ref to prevent React Strict Mode duplicate initialization
+    if (hasInitialized.current) {
+      console.log("⚠️ Already initialized, skipping duplicate mount");
+      return;
+    }
+    
+    hasInitialized.current = true;
+    isMountedRef.current = true; // ✅ Mark as mounted
+
+    console.log("🎬 Initializing 3D scene...");
 
     // ===== SCENE SETUP =====
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
-    scene.fog = new THREE.Fog(0x0a0a0a, 100, 500);
     sceneRef.current = scene;
+    
+    // ✅ CINEMATIC SKY: Soft pink/purple sunset with dark blue (matching reference image)
+    const skyGeometry = new THREE.SphereGeometry(4000, 32, 32);
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x1a1f3a) }, // Dark navy blue
+        midTopColor: { value: new THREE.Color(0x3d4a7a) }, // Slate blue
+        midColor: { value: new THREE.Color(0x9a7fb0) }, // Soft purple
+        horizonColor: { value: new THREE.Color(0xd4a5a5) }, // Dusty rose/pink
+        bottomColor: { value: new THREE.Color(0xb8a0c4) }, // Lavender
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 midTopColor;
+        uniform vec3 midColor;
+        uniform vec3 horizonColor;
+        uniform vec3 bottomColor;
+        varying vec3 vWorldPosition;
+        
+        void main() {
+          float h = normalize(vWorldPosition).y;
+          vec3 color;
+          
+          if (h > 0.4) {
+            // Top: dark navy to slate blue
+            color = mix(midTopColor, topColor, (h - 0.4) / 0.6);
+          } else if (h > 0.0) {
+            // Upper mid: slate blue to soft purple
+            color = mix(midColor, midTopColor, h / 0.4);
+          } else if (h > -0.3) {
+            // Horizon: soft purple to dusty pink
+            color = mix(horizonColor, midColor, (h + 0.3) / 0.3);
+          } else {
+            // Bottom: dusty pink to lavender
+            color = mix(bottomColor, horizonColor, (h + 1.0) / 0.7);
+          }
+          
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      side: THREE.BackSide
+    });
+    const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    scene.add(sky);
+    
+    // Soft purple atmospheric fog
+    scene.fog = new THREE.Fog(0xc8b5d0, 700, 3000); // Very soft lavender
 
     // ===== CAMERA SETUP =====
     const camera = new THREE.PerspectiveCamera(
-      75, // FOV - wider for cinematic feel
+      80, // ✅ Wider FOV for more dramatic cinematic feel
       window.innerWidth / window.innerHeight,
       0.1,
-      3000
+      8000
     );
-    // Start MUCH further back and higher for full overview
-    camera.position.set(-200, 150, 250); // WAY back and up!
-    camera.lookAt(0, 0, 0);
+    // ✅ CINEMATIC START: Lower, closer, more dramatic initial position
+    camera.position.set(-180, 45, 180); // Much lower and closer!
+    camera.lookAt(0, 25, 0); // Looking at scene, not sky
     cameraRef.current = camera;
 
     // ===== RENDERER SETUP =====
@@ -113,84 +172,58 @@ const RouteAnimation = ({ route, onComplete }) => {
     sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    // ===== GROUND PLANE =====
-    const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+    // ===== CINEMATIC TERRAIN =====
+    // Main ground plane - South African karoo/savanna colors
+    const groundGeometry = new THREE.PlaneGeometry(5000, 5000, 100, 100);
     const groundMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x1a1a1a,
-      roughness: 0.9,
-      metalness: 0.1,
+      color: 0xd4a574, // Sandy/karoo brown
+      roughness: 0.95,
+      metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -5;
     ground.receiveShadow = true;
+    
+    // Add subtle terrain variation
+    const positions = ground.geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+      // Subtle rolling hills using Perlin-like noise approximation
+      const height = Math.sin(x * 0.01) * 3 + Math.cos(z * 0.01) * 3;
+      positions.setY(i, height);
+    }
+    positions.needsUpdate = true;
+    ground.geometry.computeVertexNormals();
+    
     scene.add(ground);
 
-    // ===== CREATE LANDMARKS FOR EACH STATION =====
+    // ===== CREATE EPIC SOUTH AFRICAN LANDMARKS =====
     stations.forEach((station, index) => {
       const group = new THREE.Group();
       group.position.set(station.position.x, station.position.y, station.position.z);
 
-      // Create landmark based on type
-      let landmark;
+
+      // ===== LOAD LANDMARK FOR THIS CITY =====
+      // Use city name to get the appropriate landmark function
+      const landmarkFunction = getLandmarkForCity(station.name);
       
-      if (station.landmark === 'mountain') {
-        // Table Mountain style (pyramid)
-        const geometry = new THREE.ConeGeometry(20, 40, 4);
-        const material = new THREE.MeshStandardMaterial({ 
-          color: station.color,
-          roughness: 0.7,
-          metalness: 0.2,
-        });
-        landmark = new THREE.Mesh(geometry, material);
-        landmark.position.y = 20;
-        landmark.castShadow = true;
-        
-      } else if (station.landmark === 'city') {
-        // City skyline (multiple towers)
-        for (let i = 0; i < 5; i++) {
-          const height = 30 + Math.random() * 40;
-          const geometry = new THREE.BoxGeometry(8, height, 8);
-          const material = new THREE.MeshStandardMaterial({ 
-            color: station.color,
-            roughness: 0.4,
-            metalness: 0.6,
-          });
-          const building = new THREE.Mesh(geometry, material);
-          building.position.x = (i - 2) * 12;
-          building.position.y = height / 2;
-          building.castShadow = true;
-          group.add(building);
-        }
-        
-      } else if (station.landmark === 'tower') {
-        // Simple tower
-        const geometry = new THREE.CylinderGeometry(5, 8, 35, 8);
-        const material = new THREE.MeshStandardMaterial({ 
-          color: station.color,
-          roughness: 0.6,
-          metalness: 0.3,
-        });
-        landmark = new THREE.Mesh(geometry, material);
-        landmark.position.y = 17.5;
-        landmark.castShadow = true;
-        
-      } else {
-        // Default cube (Big Hole style)
-        const geometry = new THREE.BoxGeometry(25, 15, 25);
-        const material = new THREE.MeshStandardMaterial({ 
-          color: station.color,
-          roughness: 0.8,
-          metalness: 0.1,
-        });
-        landmark = new THREE.Mesh(geometry, material);
-        landmark.position.y = 7.5;
-        landmark.castShadow = true;
-      }
+      // Add diorama base for all cities
+      const baseGeometry = new THREE.CylinderGeometry(75, 75, 3, 32);
+      const baseMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xc9b896,
+        roughness: 0.9,
+      });
+      const base = new THREE.Mesh(baseGeometry, baseMaterial);
+      base.position.y = 1.5;
+      base.receiveShadow = true;
+      group.add(base);
+      
+      // Create the city-specific landmark
+      landmarkFunction(group);
 
-      if (landmark) group.add(landmark);
-
-      // Add platform/base
+      // Add platform/base for all stations
       const platformGeometry = new THREE.CylinderGeometry(30, 30, 2, 32);
       const platformMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x2a2a2a,
@@ -219,16 +252,21 @@ const RouteAnimation = ({ route, onComplete }) => {
 
     // ===== CAMERA PATH ANIMATION =====
     let animationProgress = 0;
-    const totalDuration = 12000; // 12 seconds total
+    const totalDuration = 20000; // ✅ SLOWED: 20 seconds for smoother journey
     
     const startTime = Date.now();
     
     const animate = () => {
       const currentTime = Date.now();
       const elapsed = currentTime - startTime;
-      animationProgress = Math.min(elapsed / totalDuration, 1);
-
-      console.log("🎬 Camera animating, progress:", animationProgress.toFixed(2)); // Debug log
+      
+      // ✅ ADD PAUSE AT FIRST STATION (Cape Town)
+      // Hold at Cape Town for 3 seconds, then start journey
+      const pauseDuration = 3000; // 3 second pause
+      let adjustedElapsed = elapsed - pauseDuration;
+      if (adjustedElapsed < 0) adjustedElapsed = 0;
+      
+      animationProgress = Math.min(adjustedElapsed / totalDuration, 1);
 
       // Calculate which station we're at/heading to
       const totalStations = stations.length;
@@ -237,53 +275,79 @@ const RouteAnimation = ({ route, onComplete }) => {
       const stationProgress = (animationProgress % progressPerStation) / progressPerStation;
 
       setProgress(animationProgress * 100);
-      setCurrentStation(Math.min(stationIndex, totalStations - 1));
+      
+      // ✅ FIX: Update text when 50% of the way to next city (earlier, smoother transition)
+      const textStationIndex = stationProgress > 0.5 ? stationIndex + 1 : stationIndex;
+      setCurrentStation(Math.min(textStationIndex, totalStations - 1));
 
       // Only proceed if still mounted
-      if (!isMounted) {
+      if (!isMountedRef.current) {
         console.log("🛑 Component unmounted, stopping animation");
         return;
+      }
+
+      // Debug: Log every frame for first 2 seconds
+      if (elapsed < 2000 && Math.floor(elapsed / 100) % 2 === 0) {
+        console.log(`⏱️ Progress: ${(animationProgress * 100).toFixed(1)}% | Station: ${stationIndex}→${stationIndex+1} | Mounted: ${isMountedRef.current}`);
       }
 
       if (stationIndex < totalStations - 1) {
         const currentPos = stations[stationIndex].position;
         const nextPos = stations[stationIndex + 1].position;
 
-        // Easing function (ease-in-out cubic)
-        const ease = (t) => t < 0.5 
-          ? 4 * t * t * t 
-          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        // ✅ ULTRA-SMOOTH EASING - No jolts at transitions
+        const ultraSmoothEase = (t) => {
+          // Smoothstep with even gentler curve
+          return t * t * t * (t * (t * 6 - 15) + 10); // Smootherstep
+        };
 
-        const easedProgress = ease(stationProgress);
+        const easedProgress = ultraSmoothEase(stationProgress);
 
-        // Interpolate camera position (follow along but stay back)
+        // ✅ CINEMATIC CAMERA MOVEMENT - Smooth with angle variation
+        
+        // X position: Smooth movement with gentle side drift
+        const sideDrift = Math.sin(easedProgress * Math.PI) * 12; // Gentle S-curve
         camera.position.x = THREE.MathUtils.lerp(
-          currentPos.x - 100, // Further back from X
-          nextPos.x - 100,
+          currentPos.x - 80,
+          nextPos.x - 80,
           easedProgress
-        );
+        ) + sideDrift;
+        
+        // Y position: Gentle rise and fall with slight approach variation
+        const baseHeight = 40;
+        const heightVariation = Math.sin(easedProgress * Math.PI) * 10; // Gentle arc
+        const approachDip = Math.sin(easedProgress * Math.PI * 2) * 5; // Subtle dip/rise
         camera.position.y = THREE.MathUtils.lerp(
-          currentPos.y + 120, // Higher up
-          nextPos.y + 120,
+          currentPos.y + baseHeight,
+          nextPos.y + baseHeight,
           easedProgress
-        ) + Math.sin(animationProgress * Math.PI * 4) * 8; // More pronounced bobbing
+        ) + heightVariation + approachDip;
+        
+        // Z position: Smooth forward with subtle in/out movement
+        const zoomInOut = Math.sin(easedProgress * Math.PI) * 15; // Move closer to cities, back out between
         camera.position.z = THREE.MathUtils.lerp(
-          currentPos.z + 200, // Further back from Z
-          nextPos.z + 200,
+          currentPos.z + 120,
+          nextPos.z + 120,
           easedProgress
-        );
+        ) + zoomInOut;
 
-        // Look at point ahead
+        // ✅ PERFECTLY SYNCHRONIZED LOOK-AT - Smooth angle changes
+        // Look-at uses SAME eased progress as camera position
+        
         const lookAtX = THREE.MathUtils.lerp(
           currentPos.x,
           nextPos.x,
           easedProgress
         );
+        
+        // Look at mid-height with gentle vertical drift
+        const lookHeightDrift = Math.sin(easedProgress * Math.PI) * 5;
         const lookAtY = THREE.MathUtils.lerp(
-          currentPos.y,
-          nextPos.y,
+          currentPos.y + 30,
+          nextPos.y + 30,
           easedProgress
-        ) + 20;
+        ) + lookHeightDrift;
+        
         const lookAtZ = THREE.MathUtils.lerp(
           currentPos.z,
           nextPos.z,
@@ -320,13 +384,14 @@ const RouteAnimation = ({ route, onComplete }) => {
     setTimeout(() => setIsSkippable(true), 2000);
 
     // ✅ START THE ANIMATION LOOP (only if still mounted)!
-    if (!isMounted) return;
+    if (!isMountedRef.current) return;
     console.log("🎬 Starting animation loop...");
     animate();
 
     // ===== CLEANUP =====
     return () => {
-      isMounted = false; // ✅ Mark as unmounted
+      isMountedRef.current = false; // ✅ Mark as unmounted
+      hasInitialized.current = false; // ✅ Allow re-initialization on remount
       console.log("🧹 Cleaning up animation...");
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);

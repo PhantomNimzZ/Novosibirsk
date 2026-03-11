@@ -10,8 +10,6 @@ import BookNow from './pages/bookings/BookNow.jsx';
 import CommuterCity from './pages/bookings/commuter/CommuterCity.jsx';
 import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
 
-import RouteSelector from "./components/booking/RouteSelector";
-
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 
@@ -20,13 +18,13 @@ import Dashboard from "./pages/admin/Dashboard.jsx";
 import ManageBookings from "./pages/admin/ManageBookings.jsx";
 import CreateBooking from "./pages/admin/CreateBooking.jsx";
 import ManageTrains from "./pages/admin/ManageTrains.jsx";
-import CreateCommuterBooking from "./pages/admin/CreateCommuterBooking.jsx";
 
 // Create root
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
 root.render(
-  <React.StrictMode>
+  // ⚠️ StrictMode temporarily disabled to fix 3D animation duplicate canvas issue
+  // <React.StrictMode>
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
@@ -38,22 +36,13 @@ root.render(
         <Route path="/commuter/:cityId" element={<CommuterCity />} />
         <Route path="/admin-login" element={<AdminLogin />} />
 
-        {/* Test route for RouteSelector */}
-        <Route path="/test-selector" element={
-          <div style={{ padding: "2rem", background: "#f5f5f5", minHeight: "100vh" }}>
-            <RouteSelector onRouteSelect={(route) => console.log(route)} />
-          </div>
-        } />
-
         {/* Admin Routes (Protected) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} /> {/* Admin dashboard */}
             <Route path="create-booking" element={<CreateBooking />} /> {/* New Booking */}
-            <Route path="create-commuter-booking" element={<CreateCommuterBooking />} />
             <Route path="manage-bookings" element={<ManageBookings />} /> {/* Manage Bookings */}
             <Route path="manage-trains" element={<ManageTrains />} /> {/* Manage Trains */}
-            
           </Route>
         </Route>
 
@@ -61,5 +50,5 @@ root.render(
         <Route path="*" element={<StartPage />} />
       </Routes>
     </BrowserRouter>
-  </React.StrictMode>
+  // </React.StrictMode>
 );

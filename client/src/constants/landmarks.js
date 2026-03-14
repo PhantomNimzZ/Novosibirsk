@@ -1,5 +1,6 @@
 // client/src/constants/landmarks.js
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 /**
  * CITY LANDMARK DEFINITIONS
@@ -12,12 +13,74 @@ import * as THREE from 'three';
  * - All positions are relative to the station position
  */
 
+// GLTF LOADER FOR SKETCHFAB MODELS
+const gltfLoader = new GLTFLoader();
+
+const loadModel = (path, group, options = {}) => {
+  const {
+    position = { x: 0, y: 0, z: 0 },
+    scale = 1,
+    rotation = { x: 0, y: 0, z: 0 },
+  } = options;
+
+  gltfLoader.load(
+    path,
+    (gltf) => {
+      const model = gltf.scene;
+      
+      model.position.set(position.x, position.y, position.z);
+      
+      if (typeof scale === 'number') {
+        model.scale.set(scale, scale, scale);
+      }
+      
+      model.rotation.set(rotation.x, rotation.y, rotation.z);
+      
+      model.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      
+      group.add(model);
+      
+      // DEBUG: Log model bounds to help with positioning
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      console.log(`✅ Loaded: ${path}`);
+      console.log(`📏 Model size: width=${size.x.toFixed(1)}, height=${size.y.toFixed(1)}, depth=${size.z.toFixed(1)}`);
+      console.log(`📍 Model center: x=${model.position.x}, y=${model.position.y}, z=${model.position.z}`);
+      console.log(`🔍 Try adjusting scale if not visible!`);
+    },
+    (progress) => {
+      const percent = (progress.loaded / progress.total) * 100;
+      console.log(`📦 Loading ${path}: ${percent.toFixed(0)}%`);
+    },
+    (error) => {
+      console.error(`❌ Failed to load ${path}:`, error);
+    }
+  );
+};
+
 export const CITY_LANDMARKS = {
   // ========================================
   // CAPE TOWN - Mother City
   // ========================================
   'Cape Town': (group) => {
-    // Ocean on west and north sides
+    // SKETCHFAB CAPE TOWN TERRAIN - SITS ON DIORAMA TOP
+    loadModel('/models/table_mountain.glb', group, {
+      position: { x: 0, y: 20, z: 0 },            // Above diorama surface (top is y=3)
+      scale: 70,                                  // Fits nicely within 75-unit radius
+      rotation: { x: 0, y: -Math.PI / 2, z: 0 }, // Perfect flat orientation
+    });
+  },
+  
+  // ========================================
+  // WORCESTER - Wine Valley
+  // ========================================
+  'Worcester': (group) => {
     const oceanGeometry = new THREE.CircleGeometry(75, 32, Math.PI * 0.6, Math.PI * 1.4);
     const oceanMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x1e5f74,
@@ -30,87 +93,16 @@ export const CITY_LANDMARKS = {
     ocean.receiveShadow = true;
     group.add(ocean);
     
-    // === TABLE MOUNTAIN (MASSIVE BACKDROP) ===
-    const plateauWidth = 80;
-    const rockMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x8b7d6b,
-      roughness: 1.0,
+    // === BEACH (PHASE 5: sandy shoreline) ===
+    const beachGeometry = new THREE.RingGeometry(65, 75, 32, 1, Math.PI * 0.6, Math.PI * 1.4);
+    const beachMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xf5deb3,
+      roughness: 0.95,
     });
-    
-    // Main plateau
-    const plateau = new THREE.Mesh(
-      new THREE.BoxGeometry(plateauWidth, 12, 25),
-      rockMaterial
-    );
-    plateau.position.set(0, 48, -85); // ✅ NEGATIVE Z = BACK! // MUCH FURTHER BACK
-    plateau.castShadow = true;
-    group.add(plateau);
-    
-    // Upper cliff face
-    const upperCliff = new THREE.Mesh(
-      new THREE.BoxGeometry(plateauWidth, 22, 18),
-      rockMaterial
-    );
-    upperCliff.position.set(0, 31, -83);
-    upperCliff.castShadow = true;
-    group.add(upperCliff);
-    
-    // Lower slopes
-    const lowerSlope = new THREE.Mesh(
-      new THREE.BoxGeometry(plateauWidth + 10, 18, 30),
-      new THREE.MeshStandardMaterial({ color: 0x7a6f5d, roughness: 1.0 })
-    );
-    lowerSlope.position.set(0, 14, -78);
-    lowerSlope.castShadow = true;
-    group.add(lowerSlope);
-    
-    // Cliff details
-    for (let i = 0; i < 15; i++) {
-      const cliffHeight = 18 + Math.random() * 12;
-      const cliff = new THREE.Mesh(
-        new THREE.BoxGeometry(3, cliffHeight, 2),
-        new THREE.MeshStandardMaterial({ 
-          color: i % 2 === 0 ? 0x7a6f5d : 0x9b8b7a,
-          roughness: 1.0,
-        })
-      );
-      cliff.position.set(-35 + i * 5, 25 + Math.random() * 8, -72);
-      cliff.castShadow = true;
-      group.add(cliff);
-    }
-    
-    // Lion's Head
-    const lionsHead = new THREE.Mesh(
-      new THREE.ConeGeometry(8, 28, 12),
-      rockMaterial
-    );
-    lionsHead.position.set(-28, 20, -62);
-    lionsHead.castShadow = true;
-    group.add(lionsHead);
-    
-    // Signal Hill
-    const signalHillGeometry = new THREE.SphereGeometry(10, 12, 12);
-    signalHillGeometry.scale(1, 0.6, 1);
-    const signalHill = new THREE.Mesh(
-      signalHillGeometry,
-      new THREE.MeshStandardMaterial({ color: 0x8b7d6b, roughness: 1.0 })
-    );
-    signalHill.position.set(-42, 8, -52);
-    signalHill.castShadow = true;
-    group.add(signalHill);
-    
-    // Vegetation on slopes
-    for (let i = 0; i < 25; i++) {
-      const vegetation = new THREE.Mesh(
-        new THREE.SphereGeometry(3 + Math.random() * 2, 8, 8),
-        new THREE.MeshStandardMaterial({ color: 0x3d5a2c, roughness: 0.95 })
-      );
-      const spreadX = -40 + Math.random() * 80;
-      const spreadZ = -60 - Math.random() * 25; // NEGATIVE Z = BACK
-      vegetation.position.set(spreadX, 8 + Math.random() * 15, spreadZ);
-      vegetation.scale.set(1, 0.6, 1);
-      group.add(vegetation);
-    }
+    const beach = new THREE.Mesh(beachGeometry, beachMaterial);
+    beach.rotation.x = -Math.PI / 2;
+    beach.position.set(0, 3.3, 0);
+    group.add(beach);
     
     // === CAPE TOWN STADIUM ===
     const stadiumOuter = new THREE.Mesh(
@@ -138,6 +130,26 @@ export const CITY_LANDMARKS = {
     tower.castShadow = true;
     group.add(tower);
     
+    // PHASE 5: Clock faces (4 sides)
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const clockFace = new THREE.Mesh(
+        new THREE.CircleGeometry(2, 16),
+        new THREE.MeshStandardMaterial({ 
+          color: 0xffffff,
+          emissive: 0xffffcc,
+          emissiveIntensity: 0.3,
+        })
+      );
+      clockFace.position.set(
+        -5 + Math.sin(angle) * 3.1,
+        22,
+        45 + Math.cos(angle) * 3.1
+      );
+      clockFace.rotation.y = -angle;
+      group.add(clockFace);
+    }
+    
     const spire = new THREE.Mesh(
       new THREE.ConeGeometry(4, 8, 8),
       new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.6 })
@@ -163,6 +175,24 @@ export const CITY_LANDMARKS = {
       building.position.set(b.x, b.h / 2 + 3, b.z);
       building.castShadow = true;
       group.add(building);
+      
+      // PHASE 5: Windows (grid pattern with lighting)
+      const floors = Math.floor(b.h / 3);
+      for (let f = 0; f < floors; f++) {
+        for (let w = 0; w < 3; w++) {
+          const isLit = Math.random() > 0.3;
+          const window = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.5, 2),
+            new THREE.MeshStandardMaterial({ 
+              color: isLit ? 0xfff4e0 : 0x2a2a2a,
+              emissive: isLit ? 0xffeb3b : 0x000000,
+              emissiveIntensity: isLit ? 0.6 : 0,
+            })
+          );
+          window.position.set(b.x + (w - 1) * 3, 6 + f * 3, b.z + 4.1);
+          group.add(window);
+        }
+      }
       
       const roof = new THREE.Mesh(
         new THREE.BoxGeometry(b.w + 1, 1, 9),
@@ -201,6 +231,20 @@ export const CITY_LANDMARKS = {
       building.position.set(-25 + Math.random() * 50, height / 2 + 3, -20 + Math.random() * 30);
       building.castShadow = true;
       group.add(building);
+      
+      // PHASE 5: Rooftop details (AC units, antennas)
+      if (Math.random() > 0.5) {
+        const rooftopDetail = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 2, 2),
+          new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 })
+        );
+        rooftopDetail.position.set(
+          building.position.x + (Math.random() - 0.5) * 3,
+          building.position.y + height / 2 + 1,
+          building.position.z
+        );
+        group.add(rooftopDetail);
+      }
     }
     
     // Residential areas
@@ -234,6 +278,28 @@ export const CITY_LANDMARKS = {
       house.castShadow = true;
       group.add(house);
       
+      // PHASE 5: Door
+      const door = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5, 3),
+        new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 })
+      );
+      door.position.set(-35 + col * 6, 5.5 + row * 3, -5 - row * 8 + 3.1);
+      group.add(door);
+      
+      // PHASE 5: Windows
+      for (let w = 0; w < 2; w++) {
+        const window = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.2, 1.2),
+          new THREE.MeshStandardMaterial({ 
+            color: 0x87ceeb,
+            emissive: 0xffffcc,
+            emissiveIntensity: 0.2,
+          })
+        );
+        window.position.set(-35 + col * 6 + (w - 0.5) * 2, 8 + row * 3, -5 - row * 8 + 3.1);
+        group.add(window);
+      }
+      
       const roof = new THREE.Mesh(
         new THREE.ConeGeometry(4.5, 3, 4),
         new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 })
@@ -242,6 +308,72 @@ export const CITY_LANDMARKS = {
       roof.rotation.y = Math.PI / 4;
       roof.castShadow = true;
       group.add(roof);
+    }
+    
+    // === PHASE 5: STREET FURNITURE ===
+    // Lamp posts along main road
+    for (let i = 0; i < 15; i++) {
+      const lampPost = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 12, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.7, metalness: 0.5 })
+      );
+      lampPost.position.set(-40 + i * 6, 9, 8);
+      lampPost.castShadow = true;
+      group.add(lampPost);
+      
+      // Glowing lamp head
+      const lampHead = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 8, 8),
+        new THREE.MeshStandardMaterial({ 
+          color: 0xffffff,
+          emissive: 0xfff4e0,
+          emissiveIntensity: 0.8,
+        })
+      );
+      lampHead.position.set(-40 + i * 6, 15, 8);
+      group.add(lampHead);
+    }
+    
+    // Palm trees (beach area)
+    for (let i = 0; i < 8; i++) {
+      // Trunk
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.7, 12, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 })
+      );
+      const treeX = -30 + Math.random() * 60;
+      const treeZ = 35 + Math.random() * 15;
+      trunk.position.set(treeX, 9, treeZ);
+      trunk.castShadow = true;
+      group.add(trunk);
+      
+      // Palm fronds
+      for (let j = 0; j < 6; j++) {
+        const angle = (j / 6) * Math.PI * 2;
+        const frond = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 6, 0.5),
+          new THREE.MeshStandardMaterial({ color: 0x2d5a2c, roughness: 0.9 })
+        );
+        frond.position.set(
+          treeX + Math.cos(angle) * 2,
+          17 + Math.sin(angle) * 2,
+          treeZ + Math.sin(angle) * 2
+        );
+        frond.rotation.z = angle;
+        group.add(frond);
+      }
+    }
+    
+    // Park benches
+    for (let i = 0; i < 6; i++) {
+      const bench = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 0.5, 1),
+        new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 })
+      );
+      const angle = (i / 6) * Math.PI * 2;
+      bench.position.set(Math.cos(angle) * 18, 4, Math.sin(angle) * 18);
+      bench.rotation.y = -angle;
+      group.add(bench);
     }
     
     // Roads
@@ -334,16 +466,70 @@ export const CITY_LANDMARKS = {
     carltonLight.position.set(0, 145, 0);
     group.add(carltonLight);
     
-    // === OTHER SKYSCRAPERS ===
+    // PHASE 5: Helipad on Carlton Centre
+    const helipad = new THREE.Mesh(
+      new THREE.CylinderGeometry(6, 6, 0.5, 32),
+      new THREE.MeshStandardMaterial({ 
+        color: 0x4a4a4a,
+        roughness: 0.8,
+      })
+    );
+    helipad.position.set(0, 103, 0);
+    group.add(helipad);
+    
+    // Helipad markings (H)
+    const helipadH1 = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 4),
+      new THREE.MeshStandardMaterial({ 
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.4,
+      })
+    );
+    helipadH1.rotation.x = -Math.PI / 2;
+    helipadH1.position.set(-1.5, 103.3, 0);
+    group.add(helipadH1);
+    
+    const helipadH2 = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 4),
+      new THREE.MeshStandardMaterial({ 
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.4,
+      })
+    );
+    helipadH2.rotation.x = -Math.PI / 2;
+    helipadH2.position.set(1.5, 103.3, 0);
+    group.add(helipadH2);
+    
+    const helipadH3 = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 1),
+      new THREE.MeshStandardMaterial({ 
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.4,
+      })
+    );
+    helipadH3.rotation.x = -Math.PI / 2;
+    helipadH3.position.set(0, 103.3, 0);
+    group.add(helipadH3);
+    
+    // === OTHER SKYSCRAPERS (PHASE 5: EXPANDED) ===
     const skyscrapers = [
       { w: 14, h: 95, d: 14, x: -24, z: -8, color: 0x6b8cae },
       { w: 13, h: 88, d: 13, x: 22, z: 10, color: 0x5f8aa8 },
       { w: 12, h: 82, d: 12, x: -15, z: 22, color: 0x7f95a3 },
       { w: 11, h: 75, d: 11, x: 18, z: -18, color: 0x8899aa },
       { w: 15, h: 92, d: 15, x: -32, z: 15, color: 0x7a8a9a },
+      // PHASE 5: New skyscrapers for density
+      { w: 12, h: 78, d: 12, x: -40, z: -15, color: 0x6a7a8a },
+      { w: 14, h: 85, d: 14, x: 35, z: -5, color: 0x5a6a7a },
+      { w: 13, h: 90, d: 13, x: -8, z: -25, color: 0x7a8a9a },
+      { w: 11, h: 72, d: 11, x: 28, z: 22, color: 0x8899aa },
+      { w: 16, h: 98, d: 16, x: -20, z: -20, color: 0x5f7a8a },
     ];
     
-    skyscrapers.forEach(b => {
+    skyscrapers.forEach((b, index) => {
       const building = new THREE.Mesh(
         new THREE.BoxGeometry(b.w, b.h, b.d),
         new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.15, metalness: 0.85 })
@@ -351,6 +537,58 @@ export const CITY_LANDMARKS = {
       building.position.set(b.x, b.h / 2 + 3, b.z);
       building.castShadow = true;
       group.add(building);
+      
+      // PHASE 5: Window grids on skyscrapers
+      const floors = Math.floor(b.h / 6);
+      const windowsPerSide = 3;
+      
+      for (let side = 0; side < 4; side++) {
+        for (let floor = 0; floor < floors; floor++) {
+          for (let win = 0; win < windowsPerSide; win++) {
+            const isLit = Math.random() > 0.35;
+            const angle = (side / 4) * Math.PI * 2;
+            const window = new THREE.Mesh(
+              new THREE.PlaneGeometry(1.5, 2.5),
+              new THREE.MeshStandardMaterial({ 
+                color: isLit ? 0xfff4e0 : 0x2a2a2a,
+                emissive: isLit ? 0xffeb3b : 0x000000,
+                emissiveIntensity: isLit ? 0.55 : 0,
+              })
+            );
+            
+            window.position.set(
+              b.x + Math.sin(angle) * (b.w / 2 + 0.1) + (win - 1) * 2 * Math.cos(angle),
+              5 + floor * 6,
+              b.z + Math.cos(angle) * (b.d / 2 + 0.1) - (win - 1) * 2 * Math.sin(angle)
+            );
+            window.rotation.y = -angle;
+            group.add(window);
+          }
+        }
+      }
+      
+      // PHASE 5: Rooftop antennas on some buildings
+      if (index % 2 === 0) {
+        const antenna = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 0.5, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.1 })
+        );
+        antenna.position.set(b.x, b.h + 7, b.z);
+        antenna.castShadow = true;
+        group.add(antenna);
+        
+        // Red warning light on antenna
+        const warningLight = new THREE.Mesh(
+          new THREE.SphereGeometry(0.5, 8, 8),
+          new THREE.MeshStandardMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 1.2,
+          })
+        );
+        warningLight.position.set(b.x, b.h + 11, b.z);
+        group.add(warningLight);
+      }
     });
     
     // === OFFICE BUILDINGS ===
@@ -430,6 +668,114 @@ export const CITY_LANDMARKS = {
         );
         group.add(tree);
       }
+    }
+    
+    // === PHASE 5: STREET LAMPS ===
+    for (let i = 0; i < 20; i++) {
+      const lampPost = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.4, 15, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.7, metalness: 0.5 })
+      );
+      lampPost.position.set(-50 + i * 5, 10.5, -30);
+      lampPost.castShadow = true;
+      group.add(lampPost);
+      
+      // Lamp head
+      const lampHead = new THREE.Mesh(
+        new THREE.SphereGeometry(1.2, 8, 8),
+        new THREE.MeshStandardMaterial({ 
+          color: 0xffffff,
+          emissive: 0xfff4e0,
+          emissiveIntensity: 0.9,
+        })
+      );
+      lampHead.position.set(-50 + i * 5, 18.5, -30);
+      group.add(lampHead);
+    }
+    
+    // === PHASE 5: TRAFFIC LIGHTS AT INTERSECTIONS ===
+    const trafficLightPositions = [
+      { x: -30, z: 0 },
+      { x: 30, z: 0 },
+      { x: 0, z: -30 },
+      { x: 0, z: 30 },
+    ];
+    
+    trafficLightPositions.forEach(pos => {
+      // Traffic light pole
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 })
+      );
+      pole.position.set(pos.x, 7, pos.z);
+      pole.castShadow = true;
+      group.add(pole);
+      
+      // Traffic light box
+      const lightBox = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 3, 1),
+        new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.7 })
+      );
+      lightBox.position.set(pos.x, 12, pos.z);
+      group.add(lightBox);
+      
+      // Green light (random which one is lit)
+      const greenLight = new THREE.Mesh(
+        new THREE.CircleGeometry(0.3, 16),
+        new THREE.MeshStandardMaterial({ 
+          color: 0x00ff00,
+          emissive: 0x00ff00,
+          emissiveIntensity: Math.random() > 0.5 ? 1.5 : 0.1,
+        })
+      );
+      greenLight.position.set(pos.x + 0.51, 11, pos.z);
+      greenLight.rotation.y = -Math.PI / 2;
+      group.add(greenLight);
+      
+      // Red light
+      const redLight = new THREE.Mesh(
+        new THREE.CircleGeometry(0.3, 16),
+        new THREE.MeshStandardMaterial({ 
+          color: 0xff0000,
+          emissive: 0xff0000,
+          emissiveIntensity: Math.random() > 0.5 ? 0.1 : 1.5,
+        })
+      );
+      redLight.position.set(pos.x + 0.51, 13, pos.z);
+      redLight.rotation.y = -Math.PI / 2;
+      group.add(redLight);
+    });
+    
+    // === PHASE 5: BETTER TREES WITH TRUNKS ===
+    for (let i = 0; i < 20; i++) {
+      const angle = (i / 20) * Math.PI * 2;
+      const treeRadius = 60 + Math.random() * 5;
+      
+      // Trunk
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.6, 0.8, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 })
+      );
+      trunk.position.set(
+        Math.cos(angle) * treeRadius,
+        7,
+        Math.sin(angle) * treeRadius
+      );
+      trunk.castShadow = true;
+      group.add(trunk);
+      
+      // Canopy
+      const canopy = new THREE.Mesh(
+        new THREE.SphereGeometry(4, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x3d5a2c, roughness: 0.9 })
+      );
+      canopy.position.set(
+        Math.cos(angle) * treeRadius,
+        13,
+        Math.sin(angle) * treeRadius
+      );
+      canopy.scale.set(1, 0.8, 1);
+      group.add(canopy);
     }
   },
 
@@ -579,6 +925,58 @@ export const CITY_LANDMARKS = {
     winery.castShadow = true;
     group.add(winery);
     
+    // PHASE 5: Winery windows
+    for (let floor = 0; floor < 2; floor++) {
+      for (let w = 0; w < 4; w++) {
+        const window = new THREE.Mesh(
+          new THREE.PlaneGeometry(2, 2.5),
+          new THREE.MeshStandardMaterial({ 
+            color: 0xfff4e0,
+            emissive: 0xffeb3b,
+            emissiveIntensity: 0.4,
+          })
+        );
+        window.position.set(-8 + w * 5, 8 + floor * 6, -35 + 10.1);
+        group.add(window);
+      }
+    }
+    
+    // PHASE 5: Chimney on winery
+    const chimney = new THREE.Mesh(
+      new THREE.CylinderGeometry(1, 1.2, 10, 8),
+      new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.85 })
+    );
+    chimney.position.set(-8, 26, -30);
+    chimney.castShadow = true;
+    group.add(chimney);
+    
+    // PHASE 5: Wine cellar entrance
+    const cellarDoor = new THREE.Mesh(
+      new THREE.PlaneGeometry(3, 4),
+      new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 })
+    );
+    cellarDoor.position.set(-10, 5, -25.1);
+    group.add(cellarDoor);
+    
+    // PHASE 5: Tasting deck
+    const deck = new THREE.Mesh(
+      new THREE.BoxGeometry(12, 0.5, 8),
+      new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.85 })
+    );
+    deck.position.set(10, 4, -28);
+    deck.castShadow = true;
+    group.add(deck);
+    
+    // Deck railing
+    for (let i = 0; i < 6; i++) {
+      const rail = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.1, 2, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 })
+      );
+      rail.position.set(5 + i * 2, 5.5, -24);
+      group.add(rail);
+    }
+    
     // Winery roof
     const wineryRoof = new THREE.Mesh(
       new THREE.ConeGeometry(18, 8, 4),
@@ -601,16 +999,26 @@ export const CITY_LANDMARKS = {
       group.add(barrel);
     }
     
-    // Trees around perimeter
+    // PHASE 5: Trees with trunks around perimeter
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const radius = 45;
       
+      // Trunk
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.7, 6, 8),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 })
+      );
+      trunk.position.set(Math.cos(angle) * radius, 6, Math.sin(angle) * radius);
+      trunk.castShadow = true;
+      group.add(trunk);
+      
+      // Canopy
       const tree = new THREE.Mesh(
         new THREE.SphereGeometry(4, 8, 8),
         new THREE.MeshStandardMaterial({ color: 0x4a6741, roughness: 0.9 })
       );
-      tree.position.set(Math.cos(angle) * radius, 7, Math.sin(angle) * radius);
+      tree.position.set(Math.cos(angle) * radius, 11, Math.sin(angle) * radius);
       tree.castShadow = true;
       group.add(tree);
     }
@@ -623,6 +1031,85 @@ export const CITY_LANDMARKS = {
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, 3.1, 5);
     group.add(road);
+    
+    // === PHASE 5: WINERY WINDOWS ===
+    for (let floor = 0; floor < 2; floor++) {
+      for (let w = 0; w < 6; w++) {
+        const window = new THREE.Mesh(
+          new THREE.PlaneGeometry(2, 2.5),
+          new THREE.MeshStandardMaterial({ 
+            color: Math.random() > 0.5 ? 0xfff4e0 : 0x2a2a2a,
+            emissive: Math.random() > 0.5 ? 0xffeb3b : 0x000000,
+            emissiveIntensity: Math.random() > 0.5 ? 0.4 : 0,
+          })
+        );
+        window.position.set(-10 + w * 4, 8 + floor * 6, -24.9);
+        group.add(window);
+      }
+    }
+    
+    // === PHASE 5: OAK TREES WITH PROPER TRUNKS ===
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const radius = 45 + Math.random() * 5;
+      
+      // Trunk
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.8, 1, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.95 })
+      );
+      trunk.position.set(Math.cos(angle) * radius, 8, Math.sin(angle) * radius);
+      trunk.castShadow = true;
+      group.add(trunk);
+      
+      // Canopy
+      const canopy = new THREE.Mesh(
+        new THREE.SphereGeometry(5, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4a6741, roughness: 0.9 })
+      );
+      canopy.position.set(Math.cos(angle) * radius, 15, Math.sin(angle) * radius);
+      canopy.scale.set(1, 0.7, 1);
+      group.add(canopy);
+    }
+    
+    // === PHASE 5: PICNIC TABLES ===
+    for (let i = 0; i < 4; i++) {
+      const tableX = -20 + i * 15;
+      
+      // Table top
+      const table = new THREE.Mesh(
+        new THREE.BoxGeometry(6, 0.5, 2),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 })
+      );
+      table.position.set(tableX, 4.5, 10);
+      group.add(table);
+      
+      // Benches
+      for (let b = 0; b < 2; b++) {
+        const bench = new THREE.Mesh(
+          new THREE.BoxGeometry(5, 0.4, 1),
+          new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 })
+        );
+        bench.position.set(tableX, 3.5, 10 + (b === 0 ? -1.5 : 1.5));
+        group.add(bench);
+      }
+    }
+    
+    // === PHASE 5: WINE TASTING SIGN ===
+    const signPost = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.9 })
+    );
+    signPost.position.set(-30, 7, 0);
+    signPost.castShadow = true;
+    group.add(signPost);
+    
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 4, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.8 })
+    );
+    sign.position.set(-30, 12, 0);
+    group.add(sign);
   },
 
   // ========================================
@@ -758,7 +1245,54 @@ export const CITY_LANDMARKS = {
       building.position.set(b.x, b.h / 2 + 3, b.z);
       building.castShadow = true;
       group.add(building);
+      
+      // PHASE 5: Museum windows
+      for (let w = 0; w < 3; w++) {
+        const window = new THREE.Mesh(
+          new THREE.PlaneGeometry(2, 2.5),
+          new THREE.MeshStandardMaterial({ 
+            color: 0xfff4e0,
+            emissive: 0xffeb3b,
+            emissiveIntensity: 0.5,
+          })
+        );
+        window.position.set(b.x, 7, b.z > 0 ? b.z - b.w/2 - 0.1 : b.z + b.w/2 + 0.1);
+        group.add(window);
+      }
     });
+    
+    // PHASE 5: Observation deck (better viewing platform)
+    const observationDeck = new THREE.Mesh(
+      new THREE.CylinderGeometry(8, 8, 1, 16),
+      new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.7 })
+    );
+    observationDeck.position.set(50, 3.5, 0);
+    observationDeck.castShadow = true;
+    group.add(observationDeck);
+    
+    // Observation deck railing
+    const deckRailing = new THREE.Mesh(
+      new THREE.TorusGeometry(8, 0.2, 8, 16),
+      new THREE.MeshStandardMaterial({ color: 0x4a4a4a, roughness: 0.7, metalness: 0.5 })
+    );
+    deckRailing.rotation.x = Math.PI / 2;
+    deckRailing.position.set(50, 5, 0);
+    group.add(deckRailing);
+    
+    // PHASE 5: Information boards around rim
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2 + Math.PI / 8;
+      const radius = 43;
+      
+      const board = new THREE.Mesh(
+        new THREE.BoxGeometry(3, 2, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 })
+      );
+      board.position.set(Math.cos(angle) * radius, 5, Math.sin(angle) * radius);
+      board.rotation.y = -angle;
+      board.castShadow = true;
+      group.add(board);
+    }
     
     // Viewing walkway (circular around rim)
     const walkway = new THREE.Mesh(
@@ -849,6 +1383,23 @@ export const CITY_LANDMARKS = {
       building.position.set(Math.cos(angle) * radius, height / 2 + 3, Math.sin(angle) * radius);
       building.castShadow = true;
       group.add(building);
+      
+      // PHASE 5: Building windows
+      for (let floor = 0; floor < Math.floor(height / 4); floor++) {
+        for (let w = 0; w < 2; w++) {
+          const window = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.5, 2),
+            new THREE.MeshStandardMaterial({ 
+              color: Math.random() > 0.4 ? 0xfff4e0 : 0x2a2a2a,
+              emissive: Math.random() > 0.4 ? 0xffeb3b : 0x000000,
+              emissiveIntensity: Math.random() > 0.4 ? 0.5 : 0,
+            })
+          );
+          window.position.set(Math.cos(angle) * radius + (w - 0.5) * 3, 6 + floor * 4, Math.sin(angle) * radius);
+          window.rotation.y = -angle;
+          group.add(window);
+        }
+      }
       
       // Flat roofs
       const roof = new THREE.Mesh(

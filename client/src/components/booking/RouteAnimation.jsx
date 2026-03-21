@@ -2,21 +2,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { getLandmarkForCity } from "../../constants/landmarks";
+import { getLandmarkForCity, getTransitionTerrain } from "../../constants/landmarks";
 import { colors, typography, spacing } from "../../styles/tokens";
 
 /**
  * CINEMATIC ROUTE ANIMATION
- * Cape Town → Worcester with fog transitions
+ * BF1 Operations-style city flyovers with terrain fly-through transitions
  * 
- * BUG FIX: Removed setState calls (setCurrentStationIndex, setProgress) from
- * the animation loop. These were triggering React re-renders on every frame,
- * and when the station index changed from 0→1 at the Worcester phase,
- * the re-render caused a ~10 second gap in Date.now() timing, skipping
- * the entire Worcester animation.
- * 
- * Solution: Use refs for animation-driven UI updates and only sync to
- * state via a throttled interval outside the animation loop.
+ * Timeline: Station → Fog Out → Fly-Through Terrain → Fog In → Station
  */
 const RouteAnimation = ({ route, onComplete }) => {
   const mountRef = useRef(null);
@@ -24,7 +17,6 @@ const RouteAnimation = ({ route, onComplete }) => {
   const hasInitialized = useRef(false);
   const isMountedRef = useRef(true);
   
-  // UI state — updated via DOM manipulation, NOT React state during animation
   const stationNameRef = useRef(null);
   const progressFillRef = useRef(null);
   
@@ -34,19 +26,48 @@ const RouteAnimation = ({ route, onComplete }) => {
   const stations = [
     { 
       name: 'Cape Town',
-      duration: 15000, // 15 seconds
+      duration: 15000,
       position: { x: 0, y: 0, z: 0 }
     },
     { 
       name: 'Worcester',
-      duration: 10000, // 10 seconds  
+      duration: 10000,
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'De Aar',
+      duration: 10000,
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'Kimberley',
+      duration: 10000,
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'Bloemfontein',
+      duration: 10000,
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'Kroonstad',
+      duration: 10000,
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'Johannesburg',
+      duration: 10000,
       position: { x: 0, y: 0, z: 0 }
     },
   ];
 
-  const transitionDuration = 3000; // 3 seconds fog transition
+  // Transition timing
+  const fogOutDuration = 1500;      // 1.5s fog thickens over current city
+  const flyThroughDuration = 5000;  // 5s flying through mountain terrain
+  const fogInDuration = 1500;       // 1.5s fog clears to reveal next city
+  const totalTransitionDuration = fogOutDuration + flyThroughDuration + fogInDuration; // 8s total
 
-  // Pre-build the timeline ONCE (it never changes)
+  // Pre-build timeline
   const timeline = useRef([]);
   const totalDuration = useRef(0);
   
@@ -63,14 +84,35 @@ const RouteAnimation = ({ route, onComplete }) => {
       timeAccumulator += stations[i].duration;
       
       if (i < stations.length - 1) {
+        // Phase 1: Fog out (over current city)
         tl.push({
-          type: 'transition',
+          type: 'fog_out',
           from: i,
           to: i + 1,
           start: timeAccumulator,
-          duration: transitionDuration
+          duration: fogOutDuration
         });
-        timeAccumulator += transitionDuration;
+        timeAccumulator += fogOutDuration;
+        
+        // Phase 2: Fly-through transition terrain
+        tl.push({
+          type: 'fly_through',
+          from: i,
+          to: i + 1,
+          start: timeAccumulator,
+          duration: flyThroughDuration
+        });
+        timeAccumulator += flyThroughDuration;
+        
+        // Phase 3: Fog in (reveal next city)
+        tl.push({
+          type: 'fog_in',
+          from: i,
+          to: i + 1,
+          start: timeAccumulator,
+          duration: fogInDuration
+        });
+        timeAccumulator += fogInDuration;
       }
     }
     timeline.current = tl;
@@ -78,7 +120,10 @@ const RouteAnimation = ({ route, onComplete }) => {
     
     console.log('📅 Timeline built:', tl);
     tl.forEach((p, i) => {
-      console.log(`  ${i}: ${p.type} ${p.index !== undefined ? `station ${p.index}` : `${p.from}→${p.to}`} | ${p.start}ms - ${p.start + p.duration}ms (duration: ${p.duration}ms)`);
+      const label = p.type === 'station' 
+        ? `station ${p.index} (${stations[p.index].name})`
+        : `${p.type} ${p.from}→${p.to}`;
+      console.log(`  ${i}: ${label} | ${p.start}ms - ${p.start + p.duration}ms (${p.duration}ms)`);
     });
   }, []);
 
@@ -88,18 +133,18 @@ const RouteAnimation = ({ route, onComplete }) => {
     hasInitialized.current = true;
     isMountedRef.current = true;
 
-    console.log("🎬 Starting Cape Town → Worcester animation...");
+    console.log("🎬 Starting cinematic route animation...");
 
     // ===== SCENE SETUP =====
     const scene = new THREE.Scene();
     
-    // BEAUTIFUL SUNSET SKY (gradient sphere)
+    // BEAUTIFUL SUNSET SKY
     const skyGeometry = new THREE.SphereGeometry(3000, 32, 32);
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x8e7a9e) },      // Soft lavender (lighter, not dark)
-        horizonColor: { value: new THREE.Color(0xe8b4b4) },  // Bright dusty pink
-        bottomColor: { value: new THREE.Color(0xd4a5b8) },   // Warm rose pink
+        topColor: { value: new THREE.Color(0x8e7a9e) },
+        horizonColor: { value: new THREE.Color(0xe8b4b4) },
+        bottomColor: { value: new THREE.Color(0xd4a5b8) },
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -133,7 +178,6 @@ const RouteAnimation = ({ route, onComplete }) => {
     const sky = new THREE.Mesh(skyGeometry, skyMaterial);
     scene.add(sky);
     
-    // FOG (will be animated during transitions)
     scene.fog = new THREE.Fog(0xe8b4b4, 80, 200);
 
     // ===== CAMERA =====
@@ -160,11 +204,11 @@ const RouteAnimation = ({ route, onComplete }) => {
     sunLight.position.set(150, 250, 150);
     scene.add(sunLight);
 
-    // ===== GROUND (simple, color-matched to horizon) =====
+    // ===== GROUND =====
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(6000, 6000),
       new THREE.MeshStandardMaterial({ 
-        color: 0xe8b4b4,  // Matches fog/horizon
+        color: 0xe8b4b4,
         roughness: 1.0,
         fog: true
       })
@@ -173,7 +217,7 @@ const RouteAnimation = ({ route, onComplete }) => {
     ground.position.y = -5;
     scene.add(ground);
 
-    // ===== LOAD ALL STATION MODELS =====
+    // ===== LOAD STATION MODELS =====
     const stationGroups = [];
     
     stations.forEach((station, index) => {
@@ -182,21 +226,38 @@ const RouteAnimation = ({ route, onComplete }) => {
       group.userData.stationName = station.name;
       group.visible = false;
       
-      console.log(`📦 Loading ${station.name}...`);
+      console.log(`📦 Loading city: ${station.name}...`);
       const landmarkFunction = getLandmarkForCity(station.name);
       landmarkFunction(group);
       
       scene.add(group);
       stationGroups.push(group);
     });
+
+    // ===== LOAD TRANSITION TERRAINS =====
+    const transitionGroups = [];
     
-    // Show first station after brief delay (let models start loading)
+    for (let i = 0; i < stations.length - 1; i++) {
+      const group = new THREE.Group();
+      group.visible = false;
+      
+      const fromCity = stations[i].name;
+      const toCity = stations[i + 1].name;
+      console.log(`📦 Loading transition: ${fromCity} → ${toCity}...`);
+      const terrainFunction = getTransitionTerrain(fromCity, toCity);
+      terrainFunction(group);
+      
+      scene.add(group);
+      transitionGroups.push(group);
+    }
+    
+    // Show first station
     setTimeout(() => {
       if (stationGroups[0]) stationGroups[0].visible = true;
     }, 100);
 
     // ===== ANIMATION LOOP =====
-    let startTime = null; // Will be set from first RAF timestamp
+    let startTime = null;
     let lastCameraPos = { x: 100, y: 50, z: 100 };
     let lastLoggedPercent = -1;
     let frameCount = 0;
@@ -204,32 +265,27 @@ const RouteAnimation = ({ route, onComplete }) => {
     let lastPhaseKey = '';
     let animationComplete = false;
     
+    const smoothEase = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    
     const animate = (timestamp) => {
       if (!isMountedRef.current || animationComplete) return;
       
-      // Capture startTime from the FIRST frame's timestamp
-      // This guarantees globalElapsed starts at 0, never negative
       if (startTime === null) {
         startTime = timestamp;
         lastFrameTime = timestamp;
         console.log(`⏱️ Animation clock started at RAF timestamp: ${timestamp.toFixed(0)}ms`);
       }
       
-      // Use the RAF timestamp for consistent timing
       const globalElapsed = timestamp - startTime;
       const frameDelta = timestamp - lastFrameTime;
       lastFrameTime = timestamp;
       frameCount++;
       
-      // Detect huge time jumps and CLAMP them (e.g., tab was backgrounded)
-      // This prevents the animation from skipping ahead if the browser throttled RAF
       if (frameDelta > 200) {
-        console.warn(`⚠️ Large frame delta: ${frameDelta.toFixed(0)}ms at frame ${frameCount} — this is normal if tab was backgrounded`);
-        // We don't need to do anything special because RAF timestamps are monotonic
-        // and the animation will just continue from where it left off visually
+        console.warn(`⚠️ Large frame delta: ${frameDelta.toFixed(0)}ms at frame ${frameCount}`);
       }
       
-      // Find current phase from pre-built timeline
+      // Find current phase
       const tl = timeline.current;
       let currentPhase = null;
       let phaseElapsed = 0;
@@ -239,154 +295,170 @@ const RouteAnimation = ({ route, onComplete }) => {
           currentPhase = phase;
           phaseElapsed = globalElapsed - phase.start;
           
-          // Log phase changes (using local var instead of window)
           const phaseKey = `${phase.type}_${phase.index ?? phase.from}`;
           if (phaseKey !== lastPhaseKey) {
             lastPhaseKey = phaseKey;
-            console.log(`🎯 Phase change → ${phase.type} ${phase.index !== undefined ? `station ${phase.index} (${stations[phase.index].name})` : `transition ${phase.from}→${phase.to}`}`);
-            console.log(`   Phase window: ${phase.start}ms → ${phase.start + phase.duration}ms (${phase.duration}ms)`);
-            console.log(`   Current globalElapsed: ${globalElapsed.toFixed(0)}ms, phaseElapsed: ${phaseElapsed.toFixed(0)}ms`);
+            const label = phase.type === 'station' 
+              ? `station ${phase.index} (${stations[phase.index].name})`
+              : `${phase.type} ${phase.from}→${phase.to}`;
+            console.log(`🎯 Phase: ${label} | ${phase.start}ms → ${phase.start + phase.duration}ms`);
           }
           break;
         }
       }
       
-      // If no phase found, animation is complete
       if (!currentPhase) {
         console.log(`🎬 Animation complete! globalElapsed=${globalElapsed.toFixed(0)}ms`);
         animationComplete = true;
-        setTimeout(() => {
-          if (onComplete) onComplete();
-        }, 1000);
+        setTimeout(() => { if (onComplete) onComplete(); }, 1000);
         return;
       }
       
-      // ===== UPDATE UI VIA DOM (no React re-renders!) =====
-      const displayStationIndex = currentPhase.type === 'station' ? 
-        currentPhase.index : currentPhase.to;
+      // Update UI
+      const displayStationIndex = currentPhase.type === 'station' 
+        ? currentPhase.index 
+        : (currentPhase.type === 'fog_in' ? currentPhase.to : currentPhase.from);
       
       if (stationNameRef.current) {
-        stationNameRef.current.textContent = stations[displayStationIndex]?.name || '';
+        if (currentPhase.type === 'fly_through') {
+          stationNameRef.current.textContent = ''; // No city name during fly-through
+        } else {
+          stationNameRef.current.textContent = stations[displayStationIndex]?.name || '';
+        }
       }
       if (progressFillRef.current) {
         const pct = Math.min(100, (globalElapsed / totalDuration.current) * 100);
         progressFillRef.current.style.width = `${pct}%`;
       }
       
-      // ===== STATION OR TRANSITION? =====
+      // ===== RENDER CURRENT PHASE =====
+      
       if (currentPhase.type === 'station') {
-        // ===== DURING STATION: ORBIT CAMERA =====
+        // ========== CITY ORBIT ==========
         const stationIndex = currentPhase.index;
         const station = stations[stationIndex];
-        let progress = phaseElapsed / station.duration;
-        
-        // Smooth easing
-        const smoothEase = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-        progress = smoothEase(progress);
+        let progress = smoothEase(phaseElapsed / station.duration);
         
         const angle = progress * Math.PI * 1.2;
         
-        // Different camera settings per city
-        let radius, height;
+        let radius, height, lookAtY;
         
-        if (stationIndex === 0) {
-          // CAPE TOWN: 200×200 flat terrain, center at y~20
-          // Close cinematic sweep — camera low and intimate
-          radius = 100;
-          if (progress < 0.5) {
-            radius = 120 - (progress * 40); // 120 → 100 (pull in)
-          } else {
-            radius = 100 + ((progress - 0.5) * 40); // 100 → 120 (pull out)
-          }
-          height = 60 - (progress * 15); // 60 → 45 (gentle descent)
+        // Generic orbit — works for all cities
+        // Cape Town slightly lower (coastal city), others standard
+        const isCapeTown = (stationIndex === 0);
+        
+        radius = 100;
+        if (progress < 0.5) {
+          radius = 120 - (progress * 40);
         } else {
-          // WORCESTER: 200×200, height 43, center at y=21.5
-          // Similar cinematic sweep
-          radius = 100;
-          if (progress < 0.5) {
-            radius = 120 - (progress * 40); // 120 → 100
-          } else {
-            radius = 100 + ((progress - 0.5) * 40); // 100 → 120
-          }
-          height = 65 - (progress * 15); // 65 → 50 (slightly higher for terrain)
+          radius = 100 + ((progress - 0.5) * 40);
         }
-        
-        const finalAngle = angle;
-        
-        camera.position.x = Math.cos(finalAngle) * radius;
-        camera.position.y = height + Math.sin(progress * Math.PI * 2) * 3;
-        camera.position.z = Math.sin(finalAngle) * radius;
-        
-        // Look at terrain center
-        const lookAtHeight = (stationIndex === 0) ? 15 : 22;
-        camera.lookAt(0, lookAtHeight, 0);
-        
-        lastCameraPos = {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z
-        };
-        
-        // Show only current station
-        stationGroups.forEach((g, i) => {
-          g.visible = (i === stationIndex);
-        });
-        
-        // Fog: tight around 200-unit terrain to hide circular edges
-        if (stationIndex === 0) {
-          scene.fog.near = 60;
-          scene.fog.far = 180;
-        } else {
-          scene.fog.near = 60;
-          scene.fog.far = 180;
-        }
-        
-      } else {
-        // ===== TRANSITION: FOG IN/OUT =====
-        const transitionProgress = phaseElapsed / transitionDuration;
-        
-        // Throttled logging
-        const percent = Math.floor(transitionProgress * 100);
-        if (percent % 25 === 0 && percent !== lastLoggedPercent) {
-          lastLoggedPercent = percent;
-          console.log(`🌫️ Transition ${percent}%`);
-        }
-        
-        // FOG ANIMATION: Thicken then clear
-        if (transitionProgress < 0.5) {
-          const fogInProgress = transitionProgress * 2;
-          scene.fog.near = 150 - (fogInProgress * 140);
-          scene.fog.far = 400 - (fogInProgress * 350);
-        } else {
-          const fogOutProgress = (transitionProgress - 0.5) * 2;
-          scene.fog.near = 10 + (fogOutProgress * 140);
-          scene.fog.far = 50 + (fogOutProgress * 350);
-        }
-        
-        // CAMERA MOVEMENT DURING TRANSITION
-        const transStartAngle = Math.atan2(lastCameraPos.z, lastCameraPos.x);
-        const transEndAngle = transStartAngle + (Math.PI * 0.3);
-        const angle = transStartAngle + (transEndAngle - transStartAngle) * transitionProgress;
-        
-        const radius = 200;
-        const height = 80;
+        height = isCapeTown ? 60 - (progress * 15) : 65 - (progress * 15);
+        lookAtY = isCapeTown ? 15 : 22;
         
         camera.position.x = Math.cos(angle) * radius;
-        camera.position.y = height;
+        camera.position.y = height + Math.sin(progress * Math.PI * 2) * 3;
         camera.position.z = Math.sin(angle) * radius;
-        camera.lookAt(0, 25, 0);
         
-        // VISIBILITY: Clean switch at exact halfway
+        camera.lookAt(0, lookAtY, 0);
+        
+        lastCameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        
+        // Visibility: only current city
+        stationGroups.forEach((g, i) => { g.visible = (i === stationIndex); });
+        transitionGroups.forEach(g => { g.visible = false; });
+        
+        // Fog: tight around terrain
+        scene.fog.near = 60;
+        scene.fog.far = 180;
+        
+      } else if (currentPhase.type === 'fog_out') {
+        // ========== FOG THICKENS OVER CURRENT CITY ==========
+        const progress = phaseElapsed / fogOutDuration;
         const fromStation = currentPhase.from;
+        
+        // Continue orbiting smoothly while fog rolls in
+        const stationProgress = 1.0; // End of the station's orbit
+        const orbitAngle = stationProgress * Math.PI * 1.2;
+        const baseAngle = orbitAngle + progress * Math.PI * 0.15; // Slight continued rotation
+        
+        const radius = 120;
+        const height = 50 + (progress * 10); // Slowly rise as fog comes in
+        
+        camera.position.x = Math.cos(baseAngle) * radius;
+        camera.position.y = height;
+        camera.position.z = Math.sin(baseAngle) * radius;
+        camera.lookAt(0, 20, 0);
+        
+        lastCameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        
+        // Show current city, fade to white fog
+        stationGroups.forEach((g, i) => { g.visible = (i === fromStation); });
+        transitionGroups.forEach(g => { g.visible = false; });
+        
+        // Fog thickens dramatically
+        scene.fog.near = 60 - (progress * 55);   // 60 → 5
+        scene.fog.far = 180 - (progress * 160);   // 180 → 20
+        
+      } else if (currentPhase.type === 'fly_through') {
+        // ========== FLY THROUGH MOUNTAIN TERRAIN ==========
+        const progress = smoothEase(phaseElapsed / flyThroughDuration);
+        const transIndex = currentPhase.from; // Index into transitionGroups
+        
+        // Camera flies FORWARD through the terrain (Z-axis movement)
+        // Shifted right to avoid seeing left circular edge
+        // End point pulled in to avoid seeing far edge
+        const startZ = 100;
+        const endZ = -80;
+        const currentZ = startZ + (endZ - startZ) * progress;
+        
+        // High enough to stay above terrain peaks (~43 units tall)
+        const flyHeight = 70 + Math.sin(progress * Math.PI) * 15; // 70→85→70 arc
+        const weaveX = 20 + Math.sin(progress * Math.PI * 2) * 8; // Offset right by 20, gentle weave
+        
+        camera.position.set(weaveX, flyHeight, currentZ);
+        
+        // Look ahead and slightly down, also offset right
+        const lookAheadZ = currentZ - 40;
+        camera.lookAt(15, 25, lookAheadZ);
+        
+        lastCameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        
+        // Show only transition terrain
+        stationGroups.forEach(g => { g.visible = false; });
+        transitionGroups.forEach((g, i) => { g.visible = (i === transIndex); });
+        
+        // Fog: atmospheric but lets more terrain show through
+        const fogClearness = Math.sin(progress * Math.PI); // 0→1→0
+        scene.fog.near = 8 + (fogClearness * 35);    // 8 → 43 → 8
+        scene.fog.far = 35 + (fogClearness * 90);     // 35 → 125 → 35
+        
+      } else if (currentPhase.type === 'fog_in') {
+        // ========== FOG CLEARS TO REVEAL NEXT CITY ==========
+        const progress = phaseElapsed / fogInDuration;
         const toStation = currentPhase.to;
         
-        stationGroups.forEach((g, i) => {
-          if (transitionProgress < 0.5) {
-            g.visible = (i === fromStation);
-          } else {
-            g.visible = (i === toStation);
-          }
-        });
+        // Camera settles into the start of the next city's orbit
+        const startAngle = 0;
+        const radius = 120;
+        const height = 60 + ((1 - progress) * 10); // Descend from 70 to 60
+        
+        camera.position.x = Math.cos(startAngle) * radius;
+        camera.position.y = height;
+        camera.position.z = Math.sin(startAngle) * radius;
+        
+        const lookAtHeight = (toStation === 0) ? 15 : 22;
+        camera.lookAt(0, lookAtHeight, 0);
+        
+        lastCameraPos = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+        
+        // Show next city, fog clearing
+        stationGroups.forEach((g, i) => { g.visible = (i === toStation); });
+        transitionGroups.forEach(g => { g.visible = false; });
+        
+        // Fog clears
+        scene.fog.near = 5 + (progress * 55);    // 5 → 60
+        scene.fog.far = 20 + (progress * 160);    // 20 → 180
       }
       
       renderer.render(scene, camera);
@@ -422,9 +494,7 @@ const RouteAnimation = ({ route, onComplete }) => {
   }, [onComplete]);
 
   const handleSkip = () => {
-    if (onComplete) {
-      onComplete();
-    }
+    if (onComplete) onComplete();
   };
 
   return (

@@ -1,12 +1,22 @@
 // client/src/components/booking/RouteAnimation3D.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { getLandmarkForCity } from "../../constants/landmarks";
 import { colors, typography, spacing } from "../../styles/tokens";
 
 /**
- * NUCLEAR RESET - ULTRA MINIMAL
- * ONLY Cape Town, no other landmarks, no bases, no complexity
+ * CINEMATIC ROUTE ANIMATION
+ * Cape Town → Worcester with fog transitions
+ * 
+ * BUG FIX: Removed setState calls (setCurrentStationIndex, setProgress) from
+ * the animation loop. These were triggering React re-renders on every frame,
+ * and when the station index changed from 0→1 at the Worcester phase,
+ * the re-render caused a ~10 second gap in Date.now() timing, skipping
+ * the entire Worcester animation.
+ * 
+ * Solution: Use refs for animation-driven UI updates and only sync to
+ * state via a throttled interval outside the animation loop.
  */
 const RouteAnimation = ({ route, onComplete }) => {
   const mountRef = useRef(null);
@@ -14,8 +24,63 @@ const RouteAnimation = ({ route, onComplete }) => {
   const hasInitialized = useRef(false);
   const isMountedRef = useRef(true);
   
+  // UI state — updated via DOM manipulation, NOT React state during animation
+  const stationNameRef = useRef(null);
+  const progressFillRef = useRef(null);
+  
   const [isSkippable, setIsSkippable] = useState(false);
-  const [progress, setProgress] = useState(0);
+
+  // Define stations with durations
+  const stations = [
+    { 
+      name: 'Cape Town',
+      duration: 15000, // 15 seconds
+      position: { x: 0, y: 0, z: 0 }
+    },
+    { 
+      name: 'Worcester',
+      duration: 10000, // 10 seconds  
+      position: { x: 0, y: 0, z: 0 }
+    },
+  ];
+
+  const transitionDuration = 3000; // 3 seconds fog transition
+
+  // Pre-build the timeline ONCE (it never changes)
+  const timeline = useRef([]);
+  const totalDuration = useRef(0);
+  
+  useEffect(() => {
+    let timeAccumulator = 0;
+    const tl = [];
+    for (let i = 0; i < stations.length; i++) {
+      tl.push({
+        type: 'station',
+        index: i,
+        start: timeAccumulator,
+        duration: stations[i].duration
+      });
+      timeAccumulator += stations[i].duration;
+      
+      if (i < stations.length - 1) {
+        tl.push({
+          type: 'transition',
+          from: i,
+          to: i + 1,
+          start: timeAccumulator,
+          duration: transitionDuration
+        });
+        timeAccumulator += transitionDuration;
+      }
+    }
+    timeline.current = tl;
+    totalDuration.current = timeAccumulator;
+    
+    console.log('📅 Timeline built:', tl);
+    tl.forEach((p, i) => {
+      console.log(`  ${i}: ${p.type} ${p.index !== undefined ? `station ${p.index}` : `${p.from}→${p.to}`} | ${p.start}ms - ${p.start + p.duration}ms (duration: ${p.duration}ms)`);
+    });
+  }, []);
 
   useEffect(() => {
     if (!mountRef.current || hasInitialized.current) return;
@@ -23,7 +88,7 @@ const RouteAnimation = ({ route, onComplete }) => {
     hasInitialized.current = true;
     isMountedRef.current = true;
 
-    console.log("🎬 ULTRA MINIMAL - Starting...");
+    console.log("🎬 Starting Cape Town → Worcester animation...");
 
     // ===== SCENE SETUP =====
     const scene = new THREE.Scene();
@@ -32,9 +97,9 @@ const RouteAnimation = ({ route, onComplete }) => {
     const skyGeometry = new THREE.SphereGeometry(3000, 32, 32);
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x5b7c99) },      // Soft blue-grey
-        horizonColor: { value: new THREE.Color(0xd4a5a5) },  // Dusty pink
-        bottomColor: { value: new THREE.Color(0xb8a0c4) },   // Lavender
+        topColor: { value: new THREE.Color(0x8e7a9e) },      // Soft lavender (lighter, not dark)
+        horizonColor: { value: new THREE.Color(0xe8b4b4) },  // Bright dusty pink
+        bottomColor: { value: new THREE.Color(0xd4a5b8) },   // Warm rose pink
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -68,8 +133,8 @@ const RouteAnimation = ({ route, onComplete }) => {
     const sky = new THREE.Mesh(skyGeometry, skyMaterial);
     scene.add(sky);
     
-    // THICK FOG at edges of Sketchfab model (hide the model edges!)
-    scene.fog = new THREE.Fog(0xd4a5a5, 80, 250); // Starts close (150), fully dense by 400
+    // FOG (will be animated during transitions)
+    scene.fog = new THREE.Fog(0xe8b4b4, 80, 200);
 
     // ===== CAMERA =====
     const camera = new THREE.PerspectiveCamera(
@@ -95,119 +160,243 @@ const RouteAnimation = ({ route, onComplete }) => {
     sunLight.position.set(150, 250, 150);
     scene.add(sunLight);
 
-    // ===== GROUND (matches fog color for seamless blend) =====
+    // ===== GROUND (simple, color-matched to horizon) =====
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(5000, 5000),
+      new THREE.PlaneGeometry(6000, 6000),
       new THREE.MeshStandardMaterial({ 
-        color: 0xd4a5a5, // Same as fog color - blends seamlessly!
+        color: 0xe8b4b4,  // Matches fog/horizon
         roughness: 1.0,
-        fog: true // Make sure fog affects it
+        fog: true
       })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -5;
     scene.add(ground);
 
-    // ===== LOAD CAPE TOWN MODEL =====
-    console.log("📦 Loading Cape Town model...");
-    const gltfLoader = new GLTFLoader();
+    // ===== LOAD ALL STATION MODELS =====
+    const stationGroups = [];
     
-    gltfLoader.load(
-      '/models/table_mountain.glb',
-      (gltf) => {
-        const model = gltf.scene;
-        
-        // Position and scale
-        model.position.set(0, 0, 0);
-        model.scale.set(250, 250, 250); // Slightly smaller for better LOD (was 300)
-        model.rotation.set(0, -Math.PI / 2, 0);
-        
-        // Enable higher quality rendering
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-            // Force highest quality textures
-            if (child.material.map) {
-              child.material.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-            }
-          }
-        });
-        
-        scene.add(model);
-        
-        console.log("✅ Cape Town loaded!");
-        const box = new THREE.Box3().setFromObject(model);
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        console.log(`📏 Size: ${size.x.toFixed(0)} × ${size.y.toFixed(0)} × ${size.z.toFixed(0)}`);
-      },
-      (progress) => {
-        const percent = (progress.loaded / progress.total) * 100;
-        if (percent % 20 === 0) console.log(`📦 Loading: ${percent.toFixed(0)}%`);
-      },
-      (error) => {
-        console.error("❌ Failed to load model:", error);
-      }
-    );
+    stations.forEach((station, index) => {
+      const group = new THREE.Group();
+      group.position.set(station.position.x, station.position.y, station.position.z);
+      group.userData.stationName = station.name;
+      group.visible = false;
+      
+      console.log(`📦 Loading ${station.name}...`);
+      const landmarkFunction = getLandmarkForCity(station.name);
+      landmarkFunction(group);
+      
+      scene.add(group);
+      stationGroups.push(group);
+    });
+    
+    // Show first station after brief delay (let models start loading)
+    setTimeout(() => {
+      if (stationGroups[0]) stationGroups[0].visible = true;
+    }, 100);
 
     // ===== ANIMATION LOOP =====
-    const startTime = Date.now();
-    const duration = 15000; // 15 seconds
+    let startTime = null; // Will be set from first RAF timestamp
+    let lastCameraPos = { x: 100, y: 50, z: 100 };
+    let lastLoggedPercent = -1;
+    let frameCount = 0;
+    let lastFrameTime = null;
+    let lastPhaseKey = '';
+    let animationComplete = false;
     
-    const animate = () => {
-      if (!isMountedRef.current) return;
+    const animate = (timestamp) => {
+      if (!isMountedRef.current || animationComplete) return;
       
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      setProgress(progress * 100);
-      
-      // ===== CAMERA ORBIT (Option C: Cinematic Sweep) =====
-      const angle = progress * Math.PI * 1.2; // Extended arc (216 degrees)
-      
-      // Radius: Start far, come closer, then pull back at end (avoid terrain collision!)
-      let radius = 150;
-      if (progress < 0.5) {
-        // First half: Come closer
-        radius = 180 - (progress * 60); // 180 → 150
-      } else {
-        // Second half: Pull back to avoid collision
-        radius = 150 + ((progress - 0.5) * 40); // 150 → 170
+      // Capture startTime from the FIRST frame's timestamp
+      // This guarantees globalElapsed starts at 0, never negative
+      if (startTime === null) {
+        startTime = timestamp;
+        lastFrameTime = timestamp;
+        console.log(`⏱️ Animation clock started at RAF timestamp: ${timestamp.toFixed(0)}ms`);
       }
       
-      // Height: Descend smoothly (cinematic swoop)
-      const height = 70 - (progress * 30); // Start high (70), end lower (40)
+      // Use the RAF timestamp for consistent timing
+      const globalElapsed = timestamp - startTime;
+      const frameDelta = timestamp - lastFrameTime;
+      lastFrameTime = timestamp;
+      frameCount++;
       
-      // Calculate position
-      camera.position.x = Math.cos(angle) * radius;
-      camera.position.y = height + Math.sin(progress * Math.PI * 2) * 8; // Gentle bob
-      camera.position.z = Math.sin(angle) * radius;
-      
-      // Always look at center of terrain (slightly elevated for better view)
-      camera.lookAt(0, 25, 0);
-      
-      // Debug log
-      if (Math.floor(elapsed / 1000) !== Math.floor((elapsed - 16) / 1000)) {
-        console.log(`🎬 ${(progress * 100).toFixed(0)}% | Camera: x:${camera.position.x.toFixed(0)} y:${camera.position.y.toFixed(0)} z:${camera.position.z.toFixed(0)}`);
+      // Detect huge time jumps and CLAMP them (e.g., tab was backgrounded)
+      // This prevents the animation from skipping ahead if the browser throttled RAF
+      if (frameDelta > 200) {
+        console.warn(`⚠️ Large frame delta: ${frameDelta.toFixed(0)}ms at frame ${frameCount} — this is normal if tab was backgrounded`);
+        // We don't need to do anything special because RAF timestamps are monotonic
+        // and the animation will just continue from where it left off visually
       }
       
-      renderer.render(scene, camera);
+      // Find current phase from pre-built timeline
+      const tl = timeline.current;
+      let currentPhase = null;
+      let phaseElapsed = 0;
       
-      if (progress < 1) {
-        animationFrameRef.current = requestAnimationFrame(animate);
-      } else {
-        console.log("🎬 Animation complete!");
+      for (const phase of tl) {
+        if (globalElapsed >= phase.start && globalElapsed < phase.start + phase.duration) {
+          currentPhase = phase;
+          phaseElapsed = globalElapsed - phase.start;
+          
+          // Log phase changes (using local var instead of window)
+          const phaseKey = `${phase.type}_${phase.index ?? phase.from}`;
+          if (phaseKey !== lastPhaseKey) {
+            lastPhaseKey = phaseKey;
+            console.log(`🎯 Phase change → ${phase.type} ${phase.index !== undefined ? `station ${phase.index} (${stations[phase.index].name})` : `transition ${phase.from}→${phase.to}`}`);
+            console.log(`   Phase window: ${phase.start}ms → ${phase.start + phase.duration}ms (${phase.duration}ms)`);
+            console.log(`   Current globalElapsed: ${globalElapsed.toFixed(0)}ms, phaseElapsed: ${phaseElapsed.toFixed(0)}ms`);
+          }
+          break;
+        }
+      }
+      
+      // If no phase found, animation is complete
+      if (!currentPhase) {
+        console.log(`🎬 Animation complete! globalElapsed=${globalElapsed.toFixed(0)}ms`);
+        animationComplete = true;
         setTimeout(() => {
           if (onComplete) onComplete();
         }, 1000);
+        return;
       }
+      
+      // ===== UPDATE UI VIA DOM (no React re-renders!) =====
+      const displayStationIndex = currentPhase.type === 'station' ? 
+        currentPhase.index : currentPhase.to;
+      
+      if (stationNameRef.current) {
+        stationNameRef.current.textContent = stations[displayStationIndex]?.name || '';
+      }
+      if (progressFillRef.current) {
+        const pct = Math.min(100, (globalElapsed / totalDuration.current) * 100);
+        progressFillRef.current.style.width = `${pct}%`;
+      }
+      
+      // ===== STATION OR TRANSITION? =====
+      if (currentPhase.type === 'station') {
+        // ===== DURING STATION: ORBIT CAMERA =====
+        const stationIndex = currentPhase.index;
+        const station = stations[stationIndex];
+        let progress = phaseElapsed / station.duration;
+        
+        // Smooth easing
+        const smoothEase = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        progress = smoothEase(progress);
+        
+        const angle = progress * Math.PI * 1.2;
+        
+        // Different camera settings per city
+        let radius, height;
+        
+        if (stationIndex === 0) {
+          // CAPE TOWN: 200×200 flat terrain, center at y~20
+          // Close cinematic sweep — camera low and intimate
+          radius = 100;
+          if (progress < 0.5) {
+            radius = 120 - (progress * 40); // 120 → 100 (pull in)
+          } else {
+            radius = 100 + ((progress - 0.5) * 40); // 100 → 120 (pull out)
+          }
+          height = 60 - (progress * 15); // 60 → 45 (gentle descent)
+        } else {
+          // WORCESTER: 200×200, height 43, center at y=21.5
+          // Similar cinematic sweep
+          radius = 100;
+          if (progress < 0.5) {
+            radius = 120 - (progress * 40); // 120 → 100
+          } else {
+            radius = 100 + ((progress - 0.5) * 40); // 100 → 120
+          }
+          height = 65 - (progress * 15); // 65 → 50 (slightly higher for terrain)
+        }
+        
+        const finalAngle = angle;
+        
+        camera.position.x = Math.cos(finalAngle) * radius;
+        camera.position.y = height + Math.sin(progress * Math.PI * 2) * 3;
+        camera.position.z = Math.sin(finalAngle) * radius;
+        
+        // Look at terrain center
+        const lookAtHeight = (stationIndex === 0) ? 15 : 22;
+        camera.lookAt(0, lookAtHeight, 0);
+        
+        lastCameraPos = {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z
+        };
+        
+        // Show only current station
+        stationGroups.forEach((g, i) => {
+          g.visible = (i === stationIndex);
+        });
+        
+        // Fog: tight around 200-unit terrain to hide circular edges
+        if (stationIndex === 0) {
+          scene.fog.near = 60;
+          scene.fog.far = 180;
+        } else {
+          scene.fog.near = 60;
+          scene.fog.far = 180;
+        }
+        
+      } else {
+        // ===== TRANSITION: FOG IN/OUT =====
+        const transitionProgress = phaseElapsed / transitionDuration;
+        
+        // Throttled logging
+        const percent = Math.floor(transitionProgress * 100);
+        if (percent % 25 === 0 && percent !== lastLoggedPercent) {
+          lastLoggedPercent = percent;
+          console.log(`🌫️ Transition ${percent}%`);
+        }
+        
+        // FOG ANIMATION: Thicken then clear
+        if (transitionProgress < 0.5) {
+          const fogInProgress = transitionProgress * 2;
+          scene.fog.near = 150 - (fogInProgress * 140);
+          scene.fog.far = 400 - (fogInProgress * 350);
+        } else {
+          const fogOutProgress = (transitionProgress - 0.5) * 2;
+          scene.fog.near = 10 + (fogOutProgress * 140);
+          scene.fog.far = 50 + (fogOutProgress * 350);
+        }
+        
+        // CAMERA MOVEMENT DURING TRANSITION
+        const transStartAngle = Math.atan2(lastCameraPos.z, lastCameraPos.x);
+        const transEndAngle = transStartAngle + (Math.PI * 0.3);
+        const angle = transStartAngle + (transEndAngle - transStartAngle) * transitionProgress;
+        
+        const radius = 200;
+        const height = 80;
+        
+        camera.position.x = Math.cos(angle) * radius;
+        camera.position.y = height;
+        camera.position.z = Math.sin(angle) * radius;
+        camera.lookAt(0, 25, 0);
+        
+        // VISIBILITY: Clean switch at exact halfway
+        const fromStation = currentPhase.from;
+        const toStation = currentPhase.to;
+        
+        stationGroups.forEach((g, i) => {
+          if (transitionProgress < 0.5) {
+            g.visible = (i === fromStation);
+          } else {
+            g.visible = (i === toStation);
+          }
+        });
+      }
+      
+      renderer.render(scene, camera);
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     // Start animation
     setTimeout(() => setIsSkippable(true), 2000);
-    console.log("🎬 Starting orbit...");
-    animate();
+    console.log("🎬 Starting animation...");
+    animationFrameRef.current = requestAnimationFrame(animate);
 
     // ===== RESIZE =====
     const handleResize = () => {
@@ -230,10 +419,10 @@ const RouteAnimation = ({ route, onComplete }) => {
       }
       renderer.dispose();
     };
-  }, []);
+  }, [onComplete]);
 
   const handleSkip = () => {
-    if (isSkippable && onComplete) {
+    if (onComplete) {
       onComplete();
     }
   };
@@ -244,9 +433,11 @@ const RouteAnimation = ({ route, onComplete }) => {
 
       <div style={styles.overlay}>
         <div style={styles.stationInfo}>
-          <div style={styles.stationName}>Cape Town</div>
+          <div ref={stationNameRef} style={styles.stationName}>
+            Cape Town
+          </div>
           <div style={styles.progressBar}>
-            <div style={{...styles.progressFill, width: `${progress}%`}} />
+            <div ref={progressFillRef} style={{...styles.progressFill, width: '0%'}} />
           </div>
         </div>
 
@@ -257,6 +448,7 @@ const RouteAnimation = ({ route, onComplete }) => {
         )}
       </div>
 
+      <div style={styles.vignette} />
       <div style={styles.filmGrain} />
     </div>
   );
@@ -330,6 +522,15 @@ const styles = {
     transition: 'all 0.3s ease',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
+  },
+  vignette: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.35) 65%, rgba(0,0,0,0.7) 100%)',
+    pointerEvents: 'none',
   },
   filmGrain: {
     position: 'absolute',

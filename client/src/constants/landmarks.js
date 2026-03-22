@@ -134,6 +134,30 @@ export const CITY_LANDMARKS = {
     });
   },
 
+  'Durban': (group) => {
+    loadModel('/models/cities/durban.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  'Pietermaritzburg': (group) => {
+    loadModel('/models/cities/pietermaritzburg.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  'Ladysmith': (group) => {
+    loadModel('/models/cities/ladysmith.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
   _placeholder: (group) => {},
 };
 
@@ -191,6 +215,47 @@ export const TRANSITION_TERRAINS = {
     });
   },
 
+  'Durban_Pietermaritzburg': (group) => {
+    loadModel('/models/transitions/durban_pietermaritzburg.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  // Johannesburg → Durban route transitions
+  'Johannesburg_Ladysmith': (group) => {
+    loadModel('/models/transitions/johannesburg_ladysmith.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  'Ladysmith_Pietermaritzburg': (group) => {
+    loadModel('/models/transitions/pietermaritzburg_ladysmith.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  'Pietermaritzburg_Durban': (group) => {
+    loadModel('/models/transitions/durban_pietermaritzburg.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
+  'Bloemfontein_Pietermaritzburg': (group) => {
+    loadModel('/models/transitions/bloemfontein_pietermaritzburg.glb', group, {
+      position: { x: 0, y: 0, z: 0 },
+      scale: 1,
+      rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+    });
+  },
+
   _placeholder: (group) => {},
 };
 
@@ -200,5 +265,7 @@ export const getLandmarkForCity = (cityName) => {
 
 export const getTransitionTerrain = (fromCity, toCity) => {
   const key = `${fromCity}_${toCity}`;
-  return TRANSITION_TERRAINS[key] || TRANSITION_TERRAINS._placeholder;
+  const reverseKey = `${toCity}_${fromCity}`;
+  // Check forward direction first, then reverse (terrain is the same both ways)
+  return TRANSITION_TERRAINS[key] || TRANSITION_TERRAINS[reverseKey] || TRANSITION_TERRAINS._placeholder;
 };

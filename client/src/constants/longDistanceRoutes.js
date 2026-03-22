@@ -1,14 +1,17 @@
 // client/src/constants/longDistanceRoutes.js
 // Long-distance PRASA routes with intermediate stops
 // Used for cinematic route animations
+//
+// NOTE: intermediateStops here control the ANIMATION stops (cities with 3D terrain models).
+// The server-side data has the full detailed stop list for scheduling purposes.
 
 export const longDistanceRoutes = {
   // Cape Town to Johannesburg (Shosholoza Meyl)
   "cape-town-johannesburg": {
     from: "Cape Town",
     to: "Johannesburg",
-    distance: 1400,
-    duration: 24,
+    distance: 1532,
+    duration: 26,
     intermediateStops: [
       { station: "Worcester", km: 110, hours: 2 },
       { station: "De Aar", km: 642, hours: 11 },
@@ -18,61 +21,67 @@ export const longDistanceRoutes = {
     ],
   },
 
-  // Cape Town to Durban
-  "cape-town-durban": {
-    from: "Cape Town",
-    to: "Durban",
-    distance: 1654,
-    duration: 28,
-    intermediateStops: [
-      { station: "Worcester", km: 110, hours: 2 },
-      { station: "De Aar", km: 642, hours: 11 },
-      { station: "Bloemfontein", km: 1125, hours: 19 },
-      { station: "Pietermaritzburg", km: 1550, hours: 26 },
-    ],
-  },
-
-  // Cape Town to Port Elizabeth
-  "cape-town-port-elizabeth": {
-    from: "Cape Town",
-    to: "Port Elizabeth",
-    distance: 764,
-    duration: 14,
-    intermediateStops: [
-      { station: "Worcester", km: 110, hours: 2 },
-      { station: "Swellendam", km: 220, hours: 4 },
-      { station: "George", km: 420, hours: 7 },
-      { station: "Knysna", km: 485, hours: 9 },
-      { station: "Plettenberg Bay", km: 520, hours: 10 },
-      { station: "Humansdorp", km: 680, hours: 12 },
-    ],
-  },
-
-  // Johannesburg to Durban
+  // Johannesburg to Durban (East Coast Line)
   "johannesburg-durban": {
     from: "Johannesburg",
     to: "Durban",
-    distance: 600,
-    duration: 11,
+    distance: 690,
+    duration: 13,
     intermediateStops: [
-      { station: "Germiston", km: 15, hours: 0.5 },
-      { station: "Volksrust", km: 250, hours: 4 },
-      { station: "Ladysmith", km: 400, hours: 7 },
-      { station: "Pietermaritzburg", km: 530, hours: 9 },
+      { station: "Ladysmith", km: 475, hours: 9 },
+      { station: "Pietermaritzburg", km: 625, hours: 11.5 },
     ],
   },
 
-  // Johannesburg to Pretoria
-  "johannesburg-pretoria": {
-    from: "Johannesburg",
-    to: "Pretoria",
-    distance: 58,
-    duration: 1,
+  // Cape Town to Durban (Southern Cross Route)
+  "cape-town-durban": {
+    from: "Cape Town",
+    to: "Durban",
+    distance: 1860,
+    duration: 36,
     intermediateStops: [
-      { station: "Rosebank", km: 8, hours: 0.2 },
-      { station: "Sandton", km: 15, hours: 0.3 },
-      { station: "Midrand", km: 30, hours: 0.5 },
-      { station: "Centurion", km: 45, hours: 0.8 },
+      { station: "Worcester", km: 110, hours: 2 },
+      { station: "De Aar", km: 642, hours: 11 },
+      { station: "Kimberley", km: 950, hours: 16 },
+      { station: "Bloemfontein", km: 1125, hours: 19 },
+      { station: "Pietermaritzburg", km: 1795, hours: 34 },
+    ],
+  },
+
+  // Johannesburg to Port Elizabeth (Garden Route)
+  "johannesburg-port-elizabeth": {
+    from: "Johannesburg",
+    to: "Port Elizabeth",
+    distance: 1065,
+    duration: 20,
+    intermediateStops: [
+      { station: "Bloemfontein", km: 400, hours: 7 },
+      { station: "Graaff-Reinet", km: 780, hours: 14 },
+    ],
+  },
+
+  // Johannesburg to East London (Wild Coast Route)
+  "johannesburg-east-london": {
+    from: "Johannesburg",
+    to: "East London",
+    distance: 1020,
+    duration: 18,
+    intermediateStops: [
+      { station: "Bloemfontein", km: 400, hours: 7 },
+      { station: "Queenstown", km: 850, hours: 15 },
+    ],
+  },
+
+  // Pretoria to Cape Town (Blue Train / Premier Route)
+  "pretoria-cape-town": {
+    from: "Pretoria",
+    to: "Cape Town",
+    distance: 1600,
+    duration: 27,
+    intermediateStops: [
+      { station: "Johannesburg", km: 58, hours: 1 },
+      { station: "Kimberley", km: 1008, hours: 17 },
+      { station: "Worcester", km: 1490, hours: 25 },
     ],
   },
 
@@ -83,9 +92,7 @@ export const longDistanceRoutes = {
     distance: 400,
     duration: 7,
     intermediateStops: [
-      { station: "Vereeniging", km: 60, hours: 1 },
       { station: "Kroonstad", km: 195, hours: 3 },
-      { station: "Winburg", km: 310, hours: 5 },
     ],
   },
 
@@ -97,8 +104,6 @@ export const longDistanceRoutes = {
     duration: 16,
     intermediateStops: [
       { station: "Pietermaritzburg", km: 80, hours: 1.5 },
-      { station: "Kokstad", km: 280, hours: 5 },
-      { station: "Mthatha", km: 450, hours: 8 },
       { station: "East London", km: 650, hours: 11 },
     ],
   },
@@ -110,10 +115,7 @@ export const longDistanceRoutes = {
     distance: 650,
     duration: 12,
     intermediateStops: [
-      { station: "Uitenhage", km: 35, hours: 1 },
       { station: "Graaff-Reinet", km: 250, hours: 4 },
-      { station: "Cradock", km: 310, hours: 5 },
-      { station: "Middelburg", km: 460, hours: 8 },
     ],
   },
 
@@ -124,9 +126,7 @@ export const longDistanceRoutes = {
     distance: 650,
     duration: 12,
     intermediateStops: [
-      { station: "Midrand", km: 28, hours: 0.5 },
-      { station: "Germiston", km: 60, hours: 1 },
-      { station: "Volksrust", km: 300, hours: 5 },
+      { station: "Johannesburg", km: 60, hours: 1 },
       { station: "Ladysmith", km: 450, hours: 8 },
       { station: "Pietermaritzburg", km: 580, hours: 10 },
     ],
@@ -139,15 +139,13 @@ export const longDistanceRoutes = {
     distance: 550,
     duration: 10,
     intermediateStops: [
-      { station: "Bethlehem", km: 180, hours: 3 },
-      { station: "Harrismith", km: 280, hours: 5 },
       { station: "Ladysmith", km: 380, hours: 7 },
       { station: "Pietermaritzburg", km: 490, hours: 9 },
     ],
   },
 };
 
-// Helper function to get route data by city IDs
+// Helper function to get route data by city names
 export const getRouteData = (fromId, toId) => {
   const routeKey = `${fromId}-${toId}`;
   const reverseKey = `${toId}-${fromId}`;

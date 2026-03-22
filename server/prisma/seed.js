@@ -17,49 +17,67 @@ async function main() {
   await prisma.train.deleteMany();
   console.log("✅ Cleared existing data");
 
-  // Seed trains with real data
+  // Seed trains with real data — BOTH DIRECTIONS for each route
   const trainRecords = [];
 
   for (const route of realRoutes) {
-    for (const trainTemplate of realTrains) {
-      // Check if Blue Train is restricted to specific routes
-      if (trainTemplate.routeRestriction) {
-        const validRoute = trainTemplate.routeRestriction.some(
-          (station) =>
-            station === route.departure || station === route.destination
-        );
-        if (!validRoute) continue; // Skip Blue Train for non-Pretoria/Cape Town routes
-      }
+    // Create trains for both forward and reverse directions
+    const directions = [
+      { from: route.departure, to: route.destination },
+      { from: route.destination, to: route.departure },
+    ];
 
-      // Create trains for each schedule time
-      for (const schedule of scheduleTemplates) {
-        const baseFare = Math.round(route.distance * basePricePerKm);
-        const finalFare = Math.round(baseFare * trainTemplate.priceMultiplier);
+    for (const direction of directions) {
+      for (const trainTemplate of realTrains) {
+        // Check if Blue Train is restricted to specific routes
+        if (trainTemplate.routeRestriction) {
+          const validRoute = trainTemplate.routeRestriction.some(
+            (station) =>
+              station === direction.from || station === direction.to
+          );
+          if (!validRoute) continue;
+        }
 
-        const train = await prisma.train.create({
-          data: {
-            train: trainTemplate.name,
-            trainNumber: `${trainTemplate.trainNumber}-${route.id}`,
-            from: route.departure,
-            to: route.destination,
-            time: schedule.time,
-            date: new Date().toISOString(),
-            price: finalFare,
-            seats: trainTemplate.totalSeats,
-            class: trainTemplate.class,
-            amenities: trainTemplate.amenities.join(", "),
-            distance: route.distance,
-            duration: route.duration,
-            intermediateStops: JSON.stringify(route.intermediateStops),
-          },
-        });
+        // Create trains for each schedule time
+        for (const schedule of scheduleTemplates) {
+          const baseFare = Math.round(route.distance * basePricePerKm);
+          const finalFare = Math.round(baseFare * trainTemplate.priceMultiplier);
 
-        trainRecords.push(train);
+          // Reverse intermediate stops for return direction
+          const isReverse = direction.from === route.destination;
+          const intermediateStops = isReverse
+            ? [...route.intermediateStops].reverse().map(stop => ({
+                ...stop,
+                km: route.distance - stop.km,
+                hours: route.duration - stop.hours,
+              }))
+            : route.intermediateStops;
+
+          const train = await prisma.train.create({
+            data: {
+              train: trainTemplate.name,
+              trainNumber: `${trainTemplate.trainNumber}-${route.id}${isReverse ? 'R' : ''}`,
+              from: direction.from,
+              to: direction.to,
+              time: schedule.time,
+              date: new Date().toISOString(),
+              price: finalFare,
+              seats: trainTemplate.totalSeats,
+              class: trainTemplate.class,
+              amenities: trainTemplate.amenities.join(", "),
+              distance: route.distance,
+              duration: route.duration,
+              intermediateStops: JSON.stringify(intermediateStops),
+            },
+          });
+
+          trainRecords.push(train);
+        }
       }
     }
   }
 
-  console.log(`✅ Created ${trainRecords.length} train schedules`);
+  console.log(`✅ Created ${trainRecords.length} train schedules (both directions)`);
 
   // Create some sample bookings (for testing)
   const sampleBookings = [
@@ -119,23 +137,18 @@ async function main() {
   // Display summary
   console.log("\n📊 Database seeding complete!");
   console.log("─────────────────────────────────────");
-  console.log(`Routes: ${realRoutes.length} long-distance routes`);
+  console.log(`Routes: ${realRoutes.length} long-distance routes (× 2 directions)`);
   console.log(`Trains: ${trainRecords.length} scheduled services`);
   console.log(`Train types: ${realTrains.length} (Economy, Business, Luxury)`);
   console.log(`Bookings: ${sampleBookings.length} sample bookings`);
   console.log("─────────────────────────────────────");
 
-  // Show some example fares
   console.log("\n💰 Sample Fares:");
-  console.log(
-    `Cape Town → Johannesburg (1,532 km):`
-  );
+  console.log(`Cape Town → Johannesburg (1,532 km):`);
   console.log(`  • Economy: R${Math.round(1532 * basePricePerKm * 1.0)}`);
   console.log(`  • Business: R${Math.round(1532 * basePricePerKm * 1.8)}`);
   console.log(`  • Luxury: R${Math.round(1532 * basePricePerKm * 3.5)}`);
-  console.log(
-    `\nJohannesburg → Durban (690 km):`
-  );
+  console.log(`\nJohannesburg → Durban (690 km):`);
   console.log(`  • Economy: R${Math.round(690 * basePricePerKm * 1.0)}`);
   console.log(`  • Business: R${Math.round(690 * basePricePerKm * 1.8)}`);
   console.log("\n🚆 Ready to start booking!");

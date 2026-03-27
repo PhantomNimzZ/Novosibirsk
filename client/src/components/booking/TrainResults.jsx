@@ -27,11 +27,9 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
 
         // Add date if provided (formatted as ISO string)
         if (dateTime.date) {
-          const dateStr = new Date(dateTime.date).toISOString();
+          const dateStr = new Date(dateTime.date).toISOString().split("T")[0];
           params.append("date", dateStr);
         }
-
-        console.log("🔍 Searching trains:", params.toString());
 
         // Call search API
         const response = await fetch(`${API_BASE}/api/search?${params.toString()}`);
@@ -41,8 +39,6 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
         }
         
         const data = await response.json();
-        
-        console.log(`✅ Found ${data.results} trains:`, data.trains);
         
         setTrains(data.trains);
         setLoading(false);
@@ -150,7 +146,7 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
                 {/* Train Header */}
                 <div style={styles.trainHeader}>
                   <div>
-                    <h3 style={styles.trainName}>{train.train}</h3>
+                    <h3 style={styles.trainName}>{train.trainName}</h3>
                     <p style={styles.trainNumber}>{train.trainNumber}</p>
                   </div>
                   <div style={styles.trainIcon}>🚆</div>

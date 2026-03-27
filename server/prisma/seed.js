@@ -9,11 +9,18 @@ import {
 
 const prisma = new PrismaClient();
 
-// All dates stored as YYYY-MM-DD
-const today = new Date().toISOString().split("T")[0];
+// Generate YYYY-MM-DD for today + N days
+const getDateStr = (daysFromNow) => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  return d.toISOString().split("T")[0];
+};
+
+const DAYS_TO_SEED = 7;
 
 async function main() {
   console.log("🚆 Seeding database with real PRASA data...");
+  console.log(`📅 Generating trains for ${DAYS_TO_SEED} days (today + ${DAYS_TO_SEED - 1} days)`);
 
   // Clear bookings first (Restrict means we can't delete trains with bookings)
   await prisma.booking.deleteMany();
@@ -22,60 +29,65 @@ async function main() {
 
   const trainRecords = [];
 
-  for (const route of realRoutes) {
-    const directions = [
-      { from: route.departure, to: route.destination },
-      { from: route.destination, to: route.departure },
-    ];
+  for (let day = 0; day < DAYS_TO_SEED; day++) {
+    const dateStr = getDateStr(day);
 
-    for (const direction of directions) {
-      for (const trainTemplate of realTrains) {
-        if (trainTemplate.routeRestriction) {
-          const valid = trainTemplate.routeRestriction.some(
-            (s) => s === direction.from || s === direction.to
-          );
-          if (!valid) continue;
-        }
+    for (const route of realRoutes) {
+      const directions = [
+        { from: route.departure, to: route.destination },
+        { from: route.destination, to: route.departure },
+      ];
 
-        for (const schedule of scheduleTemplates) {
-          const finalFare = Math.round(route.distance * basePricePerKm * trainTemplate.priceMultiplier);
+      for (const direction of directions) {
+        for (const trainTemplate of realTrains) {
+          if (trainTemplate.routeRestriction) {
+            const valid = trainTemplate.routeRestriction.some(
+              (s) => s === direction.from || s === direction.to
+            );
+            if (!valid) continue;
+          }
 
-          const isReverse = direction.from === route.destination;
-          const intermediateStops = isReverse
-            ? [...route.intermediateStops].reverse().map((stop) => ({
-                ...stop,
-                km: route.distance - stop.km,
-                hours: Math.round((route.duration - stop.hours) * 10) / 10,
-              }))
-            : route.intermediateStops;
+          for (const schedule of scheduleTemplates) {
+            const finalFare = Math.round(route.distance * basePricePerKm * trainTemplate.priceMultiplier);
 
-          const train = await prisma.train.create({
-            data: {
-              trainName: trainTemplate.name,
-              trainNumber: `${trainTemplate.trainNumber}-${route.id}${isReverse ? "R" : ""}`,
-              from: direction.from,
-              to: direction.to,
-              time: schedule.time,
-              date: today,
-              price: finalFare,
-              seats: trainTemplate.totalSeats,
-              class: trainTemplate.class,
-              amenities: trainTemplate.amenities.join(", "),
-              distance: route.distance,
-              duration: route.duration,
-              intermediateStops: JSON.stringify(intermediateStops),
-            },
-          });
+            const isReverse = direction.from === route.destination;
+            const intermediateStops = isReverse
+              ? [...route.intermediateStops].reverse().map((stop) => ({
+                  ...stop,
+                  km: route.distance - stop.km,
+                  hours: Math.round((route.duration - stop.hours) * 10) / 10,
+                }))
+              : route.intermediateStops;
 
-          trainRecords.push(train);
+            const train = await prisma.train.create({
+              data: {
+                trainName: trainTemplate.name,
+                trainNumber: `${trainTemplate.trainNumber}-${route.id}${isReverse ? "R" : ""}`,
+                from: direction.from,
+                to: direction.to,
+                time: schedule.time,
+                date: dateStr,
+                price: finalFare,
+                seats: trainTemplate.totalSeats,
+                class: trainTemplate.class,
+                amenities: trainTemplate.amenities.join(", "),
+                distance: route.distance,
+                duration: route.duration,
+                intermediateStops: JSON.stringify(intermediateStops),
+              },
+            });
+
+            trainRecords.push(train);
+          }
         }
       }
     }
   }
 
-  console.log(`✅ Created ${trainRecords.length} train schedules (both directions)`);
+  console.log(`✅ Created ${trainRecords.length} train schedules (${DAYS_TO_SEED} days × both directions)`);
 
-  // Sample bookings — dates match train dates (YYYY-MM-DD)
+  // Sample bookings — use today's date
+  const todayStr = getDateStr(0);
   const sampleBookings = [
     {
       passengerName: "Thabo Mbeki",
@@ -84,7 +96,7 @@ async function main() {
       trainNumber: trainRecords[0].trainNumber,
       departure: trainRecords[0].from,
       destination: trainRecords[0].to,
-      date: today,
+      date: todayStr,
       time: trainRecords[0].time,
       seat: "1A",
       price: trainRecords[0].price,
@@ -99,7 +111,7 @@ async function main() {
       trainNumber: trainRecords[1].trainNumber,
       departure: trainRecords[1].from,
       destination: trainRecords[1].to,
-      date: today,
+      date: todayStr,
       time: trainRecords[1].time,
       seat: "2B",
       price: trainRecords[1].price,
@@ -114,7 +126,7 @@ async function main() {
       trainNumber: trainRecords[2].trainNumber,
       departure: trainRecords[2].from,
       destination: trainRecords[2].to,
-      date: today,
+      date: todayStr,
       time: trainRecords[2].time,
       seat: "3C",
       price: trainRecords[2].price,
@@ -133,7 +145,7 @@ async function main() {
   console.log("─────────────────────────────────────");
   console.log(`Routes: ${realRoutes.length} long-distance routes (× 2 directions)`);
   console.log(`Trains: ${trainRecords.length} scheduled services`);
-  console.log(`Date: ${today} (YYYY-MM-DD format)`);
+  console.log(`Dates: ${getDateStr(0)} → ${getDateStr(DAYS_TO_SEED - 1)} (${DAYS_TO_SEED} days)`);
   console.log("─────────────────────────────────────");
   console.log("\n🚆 Ready to start booking!");
 }

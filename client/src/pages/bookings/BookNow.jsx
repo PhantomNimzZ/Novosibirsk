@@ -1,10 +1,7 @@
 // client/src/pages/bookings/BookNow.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import LiveTracker from "../../components/maps/LiveTracker.jsx";
 import SeatSelector from "../../components/booking/SeatSelector.jsx";
-import { stationCoordinatesByCity } from "../../constants/realStations";
-import { getCityFromTrainId } from "../../utils/routeUtils";
 import { generatePDF } from "../../utils/generatePDF";
 import { API_BASE } from "../../api/config";
 
@@ -13,14 +10,19 @@ const BookNow = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ sessionStorage fallback — survives page refresh
+  // sessionStorage fallback — survives page refresh
   const [train, setTrain] = useState(() => {
     if (location.state?.train) {
       sessionStorage.setItem("selectedTrain", JSON.stringify(location.state.train));
       return location.state.train;
     }
-    const saved = sessionStorage.getItem("selectedTrain");
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = sessionStorage.getItem("selectedTrain");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      sessionStorage.removeItem("selectedTrain");
+      return null;
+    }
   });
 
   const [name, setName] = useState("");
@@ -36,12 +38,6 @@ const BookNow = () => {
 
   // Fetch booked seats from API
   useEffect(() => {
-    console.log("🐛 useEffect triggered. Train:", train);  // ADD THIS LINE
-    console.log("🐛 Train object:", train);
-    console.log("🐛 Train ID:", train?.id);
-    console.log("🐛 Train keys:", Object.keys(train));  // ADD THIS
-    console.log("🐛 Full train data:", JSON.stringify(train, null, 2));  // ADD THIS
-
     const fetchBookedSeats = async () => {
       try {
         setLoadingSeats(true);
@@ -56,8 +52,6 @@ const BookNow = () => {
 
         const dateStr = new Date(train.date).toISOString().split('T')[0];
         
-        console.log(`🔍 Fetching booked seats for train ${trainId} on ${dateStr}`);
-        
         const response = await fetch(
           `${API_BASE}/api/trains/${trainId}/seats?date=${dateStr}`
         );
@@ -67,8 +61,6 @@ const BookNow = () => {
         }
         
         const data = await response.json();
-        console.log(`✅ Found ${data.count} booked seats:`, data.bookedSeats);
-        
         setBookedSeats(data.bookedSeats);
         setLoadingSeats(false);
       } catch (error) {
@@ -79,22 +71,9 @@ const BookNow = () => {
     };
 
     if (train) {
-      console.log("🐛 Attempting fetch with train:", train);
       fetchBookedSeats();
-    } else {
-      console.log("🐛 No train object, skipping fetch");
     }
   }, [train]);
-
- /* // Mock booked seats (in production, fetch from API based on train + date)
-  const [bookedSeats] = useState(["1A", "1B", "2C", "3D", "5A", "7B"]);
-
-  // Clean up sessionStorage on unmount if booking succeeded
-  useEffect(() => {
-    return () => {
-      if (bookingSuccess) sessionStorage.removeItem("selectedTrain");
-    };
-  }, [bookingSuccess]); */
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -111,16 +90,14 @@ const BookNow = () => {
       passengerName: name,
       email,
       idNumber,
-      trainNumber: train.trainNumber || train.train,
+      trainNumber: train.trainNumber,
       departure: train.from,
       destination: train.to,
       date: train.date || new Date().toISOString(),
       time: train.time || "",
       seat: selectedSeat,
-      price: parseFloat(String(train.price).replace(/[^0-9.]/g, "")) || 0,
-      paymentStatus: payment === "online" ? "Pending" : "Pay at Station",
-      status: "Active",
-      trainId: train.trainId || 1,
+      price: typeof train.price === "number" ? train.price : parseFloat(String(train.price).replace(/[^0-9.]/g, "")) || 0,
+      trainId: train.trainId || train.id,
     };
 
     try {
@@ -188,7 +165,7 @@ const BookNow = () => {
           <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Booking Reference:</span>
-              <span className="font-semibold">#{bookingData.id}</span>
+              <span className="font-semibold">{bookingData.bookingReference || `#${bookingData.id}`}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Route:</span>
@@ -206,7 +183,7 @@ const BookNow = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Price:</span>
-              <span className="font-semibold">{train.price}</span>
+              <span className="font-semibold">R{Math.round(train.price)}</span>
             </div>
           </div>
 
@@ -242,41 +219,24 @@ const BookNow = () => {
   }
 
   // ─── Booking Form ───
-  const cityKey = getCityFromTrainId(train.train);
-  const stationCoords = cityKey ? stationCoordinatesByCity[cityKey] : {};
-
-  console.log("🐛 bookedSeats:", bookedSeats);
-  console.log("🐛 loadingSeats:", loadingSeats);
-  console.log("🐛 selectedSeat:", selectedSeat);
-
   return (
     <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-4xl bg-white shadow-lg rounded-xl p-8">
-        <h1 className="text-2xl font-semibold mb-3">🚆 Booking: {train.train}</h1>
+        <h1 className="text-2xl font-semibold mb-3">🚆 Booking: {train.trainName}</h1>
 
         <p className="text-gray-700 mb-2">
           <strong>Route:</strong> {train.from} → {train.to}
         </p>
         <p className="text-gray-700 mb-6">
-          <strong>Time:</strong> {train.time} | <strong>Price:</strong> {train.price}
+          <strong>Time:</strong> {train.time} | <strong>Price:</strong> R{Math.round(train.price)}
         </p>
-
-        {/* Live Tracker */}
-        <div className="mb-8">
-          <LiveTracker
-            trainId={(train.train || train.trainNumber || "").toLowerCase().replace(/\s+/g, "-")}
-            from={train.from}
-            to={train.to}
-            cityStations={stationCoords}
-          />
-        </div>
 
         {/* Seat Selection */}
         <div className="mb-8">
           <SeatSelector
             bookedSeats={bookedSeats}
             selectedSeat={selectedSeat}
-            onSeatSelect={setSelectedSeat}  // ✅ Correct prop name
+            onSeatSelect={setSelectedSeat}
             loading={loadingSeats}
           />
         </div>

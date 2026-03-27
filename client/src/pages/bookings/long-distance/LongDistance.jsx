@@ -30,7 +30,6 @@ const LongDistance = () => {
 
   // Step 1: Route Selection
   const handleRouteSelect = (route) => {
-    console.log("Route selected:", route);
     setSelectedRoute(route);
     setStep(2);
     
@@ -40,7 +39,6 @@ const LongDistance = () => {
 
   // Step 2: Date/Time Selection
   const handleDateTimeSelect = (dateTime) => {
-    console.log("Date/Time selected:", dateTime);
     setSelectedDateTime(dateTime);
     setStep(3);
     
@@ -49,7 +47,6 @@ const LongDistance = () => {
 
   // Step 3: Train Selection
   const handleTrainSelect = (train) => {
-    console.log("Train selected:", train);
     setSelectedTrain(train);
     
     // Play route animation
@@ -64,14 +61,18 @@ const LongDistance = () => {
     navigate("/book", {
       state: {
         train: {
-          train: selectedTrain.name,
-          trainNumber: selectedTrain.number,
+          id: selectedTrain.id,
           trainId: selectedTrain.id,
+          trainName: selectedTrain.trainName,
+          trainNumber: selectedTrain.trainNumber,
           from: selectedRoute.from,
           to: selectedRoute.to,
           date: selectedDateTime.date,
-          time: selectedDateTime.time,
-          price: `R${selectedTrain.price}`,
+          time: selectedTrain.time,
+          price: selectedTrain.price,
+          class: selectedTrain.class,
+          distance: selectedTrain.distance,
+          duration: selectedTrain.duration,
         },
       },
     });
@@ -178,7 +179,7 @@ const LongDistance = () => {
             distance: selectedRoute.distance,
             duration: selectedRoute.duration,
             arrivalTime: selectedDateTime?.time || "22:00",
-            intermediateStops: selectedRoute.intermediateStops || [], // ✅ ADD THIS LINE!s
+            intermediateStops: selectedRoute.intermediateStops || [],
           }}
           onComplete={handleAnimationComplete}
         />

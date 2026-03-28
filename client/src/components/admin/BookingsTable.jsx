@@ -38,7 +38,7 @@ const BookingsTable = ({ bookings, onDelete, onUpdate }) => {
 
   return (
     <>
-      {/* ✅ RESPONSIVE: Scrollable container with max-width */}
+      
       <div className="overflow-x-auto bg-white rounded-lg shadow" style={{ maxWidth: "100%" }}>
         <table className="min-w-full divide-y divide-gray-200" style={{ fontSize: "0.875rem" }}>
           <thead className="bg-gray-50">
@@ -121,7 +121,7 @@ const BookingsTable = ({ bookings, onDelete, onUpdate }) => {
                   </span>
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap text-sm font-medium">
-                  {/* ✅ COMPACT: Smaller buttons for responsive layout */}
+                  
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleEdit(booking)}

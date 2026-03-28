@@ -9,6 +9,7 @@ const ManageBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all"); // all, active, cancelled, pending
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,7 +44,6 @@ const ManageBookings = () => {
       }
 
       const data = await response.json();
-      console.log("✅ Fetched bookings:", data);
       setBookings(data);
       setLoading(false);
     } catch (err) {
@@ -64,15 +64,20 @@ const ManageBookings = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete booking");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to cancel booking");
       }
 
-      // Remove from state
-      setBookings(bookings.filter((b) => b.id !== id));
-      alert("Booking deleted successfully");
+      const result = await response.json();
+
+      // Update state to reflect soft-delete (status → Cancelled)
+      setBookings(bookings.map((b) =>
+        b.id === id ? { ...b, status: "Cancelled", paymentStatus: result.paymentStatus } : b
+      ));
+      alert("Booking cancelled successfully");
     } catch (err) {
-      console.error("Error deleting booking:", err);
-      alert("Failed to delete booking: " + err.message);
+      console.error("Error cancelling booking:", err);
+      alert("Failed to cancel booking: " + err.message);
     }
   };
 
@@ -89,7 +94,8 @@ const ManageBookings = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update booking");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update booking");
       }
 
       const data = await response.json();
@@ -103,12 +109,28 @@ const ManageBookings = () => {
     }
   };
 
-  // Filter bookings
+  // Filter and search bookings
   const filteredBookings = bookings.filter((booking) => {
-    if (filter === "all") return true;
-    if (filter === "active") return booking.status === "Active";
-    if (filter === "cancelled") return booking.status === "Cancelled";
-    if (filter === "pending") return booking.paymentStatus === "Pending";
+    // Status filter
+    if (filter === "active" && booking.status !== "Active") return false;
+    if (filter === "cancelled" && booking.status !== "Cancelled") return false;
+    if (filter === "pending" && booking.paymentStatus !== "Pending") return false;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        booking.passengerName?.toLowerCase().includes(q) ||
+        booking.email?.toLowerCase().includes(q) ||
+        booking.departure?.toLowerCase().includes(q) ||
+        booking.destination?.toLowerCase().includes(q) ||
+        booking.trainNumber?.toLowerCase().includes(q) ||
+        booking.seat?.toLowerCase().includes(q) ||
+        booking.bookingReference?.toLowerCase().includes(q) ||
+        String(booking.id).includes(q)
+      );
+    }
+
     return true;
   });
 
@@ -164,8 +186,16 @@ const ManageBookings = () => {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 bg-white rounded-lg shadow p-4">
+      {/* Search & Filters */}
+      <div className="bg-white rounded-lg shadow p-4 space-y-3">
+        <input
+          type="text"
+          placeholder="Search by name, email, route, seat, reference..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+        <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setFilter("all")}
           className={`px-4 py-2 rounded-md text-sm font-medium transition ${
@@ -206,6 +236,7 @@ const ManageBookings = () => {
         >
           Pending Payment ({bookings.filter((b) => b.paymentStatus === "Pending").length})
         </button>
+        </div>
       </div>
 
       {/* Bookings Table */}

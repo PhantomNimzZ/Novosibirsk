@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 const TrainModal = ({ train, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    train: "",
+    trainName: "",
     trainNumber: "",
     from: "",
     to: "",
@@ -21,7 +21,7 @@ const TrainModal = ({ train, onClose, onSave }) => {
   useEffect(() => {
     if (train) {
       setFormData({
-        train: train.train || "",
+        trainName: train.trainName || "",
         trainNumber: train.trainNumber || "",
         from: train.from || "",
         to: train.to || "",
@@ -91,8 +91,8 @@ const TrainModal = ({ train, onClose, onSave }) => {
                 </label>
                 <input
                   type="text"
-                  name="train"
-                  value={formData.train}
+                  name="trainName"
+                  value={formData.trainName}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

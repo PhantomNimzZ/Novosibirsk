@@ -56,7 +56,7 @@ const TrainTable = ({ trains, onEdit, onDelete }) => {
             <tr key={train.id} className="hover:bg-gray-50">
               <td className="px-3 py-3">
                 <div className="text-sm font-medium text-gray-900" style={{ maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {train.train}
+                  {train.trainName}
                 </div>
                 <div className="text-xs text-gray-500">
                   {train.trainNumber}

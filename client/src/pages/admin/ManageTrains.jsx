@@ -11,6 +11,7 @@ const ManageTrains = () => {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrain, setEditingTrain] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,8 +28,6 @@ const ManageTrains = () => {
         navigate("/admin/login");
         return;
       }
-
-      console.log("🔍 Fetching trains from:", `${API_BASE}/api/trains`);
 
       const response = await fetch(`${API_BASE}/api/trains`, {
         headers: {
@@ -47,7 +46,6 @@ const ManageTrains = () => {
       }
 
       const data = await response.json();
-      console.log("✅ Fetched trains:", data);
       setTrains(data);
       setLoading(false);
     } catch (err) {
@@ -62,7 +60,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ ISSUE 6 FIX: Warn before editing trains with active bookings
+  // Warn before editing trains with active bookings
   const handleEdit = async (train) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -98,7 +96,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ ISSUE 6 & 8 FIX: Prevent deleting trains with active bookings
+  // Prevent deleting trains with active bookings
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -245,9 +243,31 @@ const ManageTrains = () => {
         </button>
       </div>
 
+      {/* Search */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <input
+          type="text"
+          placeholder="Search by train name, number, route..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+      </div>
+
       {/* Trains Table */}
       <TrainTable
-        trains={trains}
+        trains={trains.filter((t) => {
+          if (!searchQuery.trim()) return true;
+          const q = searchQuery.toLowerCase();
+          return (
+            t.trainName?.toLowerCase().includes(q) ||
+            t.trainNumber?.toLowerCase().includes(q) ||
+            t.from?.toLowerCase().includes(q) ||
+            t.to?.toLowerCase().includes(q) ||
+            t.class?.toLowerCase().includes(q) ||
+            t.date?.includes(q)
+          );
+        })}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />

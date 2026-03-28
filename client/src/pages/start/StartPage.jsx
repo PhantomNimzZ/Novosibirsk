@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const SLIDES = [
   {
-    url: "/images/cape_town.avif",
+    url: "/images/cape-town.avif",
     city: "Cape Town",
     caption: "Cape Town & Table Mountain",
   },
@@ -74,8 +74,9 @@ function StartPage() {
             </div>
           </div>
           <div style={styles.navLinks}>
-            <a href="/long-distance" style={styles.navLink}>Train Schedules</a>
+            <a href="/schedules" style={styles.navLink}>Train Schedules</a>
             <a href="/commuter" style={styles.navLink}>Commuter</a>
+            <a href="/contact" style={styles.navLink}>Contact Us</a>
             <a href="/admin-login" style={styles.navLink}>Admin</a>
           </div>
         </div>
@@ -241,8 +242,10 @@ function StartPage() {
             <span style={styles.footerTagline}>Passenger Rail Agency of South Africa</span>
           </div>
           <div style={styles.footerLinks}>
+            <a href="/schedules" style={styles.footerLink}>Schedules</a>
             <a href="/long-distance" style={styles.footerLink}>Long-Distance</a>
             <a href="/commuter" style={styles.footerLink}>Commuter</a>
+            <a href="/contact" style={styles.footerLink}>Contact Us</a>
             <a href="/admin-login" style={styles.footerLink}>Admin Portal</a>
           </div>
           <div style={styles.footerCopy}>

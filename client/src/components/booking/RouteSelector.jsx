@@ -48,9 +48,9 @@ const RouteSelector = ({ onRouteSelect }) => {
     'ZA-WC': { x: 100, y: 395, label: 'Western Cape' },
     'ZA-NC': { x: 130, y: 230, label: 'Northern Cape' },
     'ZA-EC': { x: 255, y: 310, label: 'Eastern Cape' },
-    'ZA-FS': { x: 265, y: 180, label: 'Free State' },
+    'ZA-FS': { x: 260, y: 168, label: 'Free State' },
     'ZA-NL': { x: 385, y: 195, label: 'KZN' },
-    'ZA-GT': { x: 310, y: 110, label: 'Gauteng', size: 7 },
+    'ZA-GT': { x: 330, y: 118, label: 'Gauteng', size: 7 },
     'ZA-NW': { x: 240, y: 95, label: 'North West' },
     'ZA-LP': { x: 330, y: 45, label: 'Limpopo' },
     'ZA-MP': { x: 380, y: 85, label: 'Mpumalanga' },
@@ -98,7 +98,7 @@ const RouteSelector = ({ onRouteSelect }) => {
 
   const getLabelOffset = (id) => ({
     'cape-town':        { dx: -8, dy: -12, anchor: 'end' },
-    'worcester':        { dx: -6, dy: 12, anchor: 'end' },
+    'worcester':        { dx: 8, dy: -8, anchor: 'start' },
     'johannesburg':     { dx: 10, dy: -4, anchor: 'start' },
     'pretoria':         { dx: 10, dy: -2, anchor: 'start' },
     'durban':           { dx: 10, dy: 10, anchor: 'start' },
@@ -135,18 +135,18 @@ const RouteSelector = ({ onRouteSelect }) => {
           {/* Ocean background */}
           <rect x="-15" y="-10" width="470" height="440" fill="#dce8ef" rx="4" />
 
-          {/* Province fills — thick land-colored stroke bleeds outward to close all gaps */}
+          {/* Province fills */}
           {SA_PROVINCES.map((prov) => (
             <path key={`fill-${prov.id}`} d={prov.d}
               fill={prov.id === 'LS' ? '#e2dcd0' : '#f0ebe1'}
               stroke={prov.id === 'LS' ? '#e2dcd0' : '#f0ebe1'}
-              strokeWidth="6.5" strokeLinejoin="round"
+              strokeWidth="5" strokeLinejoin="round"
               style={{ paintOrder: 'stroke' }} />
           ))}
-          {/* Province borders drawn on top */}
+          {/* Province borders */}
           {SA_PROVINCES.map((prov) => (
             <path key={`border-${prov.id}`} d={prov.d}
-              fill="none" stroke="#c4bfb0" strokeWidth="0.4" strokeLinejoin="round" />
+              fill="none" stroke="#d4cfc5" strokeWidth="0.5" strokeLinejoin="round" />
           ))}
 
           {/* Province labels */}
@@ -156,7 +156,7 @@ const RouteSelector = ({ onRouteSelect }) => {
             return (
               <text key={`lbl-${prov.id}`}
                 x={lbl.x} y={lbl.y}
-                fill="#c4bfb0" fontSize={lbl.size || 8}
+                fill="#ccc8bc" fontSize={lbl.size || 8}
                 fontStyle="italic" fontFamily="Georgia,serif"
                 textAnchor="middle"
                 style={{ pointerEvents: 'none', userSelect: 'none' }}

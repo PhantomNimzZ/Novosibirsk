@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import CityMapPreview from "../../../components/maps/CityMapPreview";
 import QuickBookingForm from "../../../components/booking/QuickBookingForm";
 import QRTicket from "../../../components/booking/QRTicket";
-import { stationCoordinatesByCity } from "../../../constants/realStations";
 import {
   getAllStations,
   areOnSameLine,
@@ -18,7 +17,6 @@ import { colors, typography, spacing } from "../../../styles/tokens";
 const CommuterCity = () => {
   const { cityId } = useParams();
 
-  const cityStations = stationCoordinatesByCity[cityId] || {};
   const allStations = getAllStations(cityId);
 
   const [from, setFrom] = useState("");
@@ -84,7 +82,7 @@ const CommuterCity = () => {
     }
   }, [from, to, cityId]);
 
-  // ✅ APPROACH B: Find a train that serves this route
+  // Find a train that serves this route
   const findMatchingTrain = async (fromStation, toStation, dateStr) => {
     try {
       const response = await fetch(`${API_BASE}/api/trains`);
@@ -92,28 +90,23 @@ const CommuterCity = () => {
       
       const allTrains = await response.json();
       
-      // Find metro trains that include this route (UNIDIRECTIONAL - forward only)
+      // Find metro trains that include both stations on their line
       const matching = allTrains.filter(train => {
-        if (!train.train?.includes("Metro Rail")) return false;
+        if (!train.trainName?.includes("Metro Rail")) return false;
         
         try {
           const stops = JSON.parse(train.intermediateStops || "[]");
           const fromIndex = stops.indexOf(fromStation);
           const toIndex = stops.indexOf(toStation);
-          // ✅ UNIDIRECTIONAL: Only forward direction (matches seed data)
-          // Train goes Durban(0) → Pinetown(1) → New Germany(2)
-          // Allows: Durban → Pinetown ✅, Pinetown → New Germany ✅
-          // Blocks: Pinetown → Durban ❌ (would need separate return train)
-          return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+          // Both stations must be on this line (either direction)
+          return fromIndex !== -1 && toIndex !== -1;
         } catch {
-          // Fallback to exact match if intermediateStops not available
           return train.from === fromStation && train.to === toStation;
         }
       }).filter(train => 
         new Date(train.date).toISOString().split('T')[0] === dateStr
       );
       
-      console.log(`🚇 Found ${matching.length} trains for ${fromStation} → ${toStation} on ${dateStr}`);
       return matching.length > 0 ? matching[0] : null;
     } catch (error) {
       console.error("Error finding train:", error);
@@ -123,7 +116,7 @@ const CommuterCity = () => {
 
   const handleBooking = async (formData) => {
     try {
-      // ✅ OPTION 1: Block transfer routes with helpful guidance
+      // Block transfer routes with helpful guidance
       if (routeValidation.type === "transfer") {
         alert(
           "⚠️ TRANSFER REQUIRED\n\n" +
@@ -138,29 +131,27 @@ const CommuterCity = () => {
         return; // Don't proceed with booking
       }
 
-      // ✅ APPROACH B: Find a matching train before creating booking (direct routes only)
+      // Find a matching train before creating booking
       const dateStr = new Date().toISOString().split('T')[0];
       const matchingTrain = await findMatchingTrain(formData.from, formData.to, dateStr);
       
       if (!matchingTrain) {
         alert("No trains available for this route today. Please try again later or contact support.");
-        throw new Error("No matching train found");
+        return;
       }
 
       const bookingPayload = {
         passengerName: formData.name,
         email: "commuter@prasa.co.za",
         idNumber: "N/A",
-        trainNumber: matchingTrain.trainNumber, // ✅ Real train number
-        departure: formData.from,
-        destination: formData.to,
-        date: matchingTrain.date, // ✅ Real train date
-        time: matchingTrain.time, // ✅ Real train time
+        trainNumber: matchingTrain.trainNumber,
+        departure: matchingTrain.from,
+        destination: matchingTrain.to,
+        date: matchingTrain.date,
+        time: matchingTrain.time,
         seat: "General Seating",
         price: formData.fare,
-        paymentStatus: formData.payment === "mobile" ? "Pending" : "Cash",
-        status: "Active",
-        trainId: matchingTrain.id, // ✅ Real train ID (no more phantom bookings!)
+        trainId: matchingTrain.id,
       };
 
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -170,7 +161,8 @@ const CommuterCity = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Booking failed");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Booking failed");
       }
 
       const result = await response.json();

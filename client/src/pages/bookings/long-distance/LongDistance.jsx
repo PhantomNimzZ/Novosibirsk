@@ -30,6 +30,7 @@ const LongDistance = () => {
 
   // Step 1: Route Selection
   const handleRouteSelect = (route) => {
+
     setSelectedRoute(route);
     setStep(2);
     
@@ -39,6 +40,7 @@ const LongDistance = () => {
 
   // Step 2: Date/Time Selection
   const handleDateTimeSelect = (dateTime) => {
+
     setSelectedDateTime(dateTime);
     setStep(3);
     
@@ -61,18 +63,14 @@ const LongDistance = () => {
     navigate("/book", {
       state: {
         train: {
-          id: selectedTrain.id,
+          train: selectedTrain.name,
+          trainNumber: selectedTrain.number,
           trainId: selectedTrain.id,
-          trainName: selectedTrain.trainName,
-          trainNumber: selectedTrain.trainNumber,
           from: selectedRoute.from,
           to: selectedRoute.to,
           date: selectedDateTime.date,
-          time: selectedTrain.time,
-          price: selectedTrain.price,
-          class: selectedTrain.class,
-          distance: selectedTrain.distance,
-          duration: selectedTrain.duration,
+          time: selectedDateTime.time,
+          price: `R${selectedTrain.price}`,
         },
       },
     });
@@ -93,7 +91,25 @@ const LongDistance = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={styles.page}>
+      {/* Nav Bar */}
+      <nav style={styles.nav}>
+        <div style={styles.navInner}>
+          <div style={styles.logoGroup} onClick={() => navigate("/")} role="button">
+            <svg width="36" height="36" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="3" />
+              {[...Array(12)].map((_, i) => (
+                <line key={i} x1="50" y1="12" x2="50" y2="38" stroke="white" strokeWidth="2.5" strokeLinecap="round" transform={`rotate(${i * 30} 50 50)`} />
+              ))}
+              <circle cx="50" cy="50" r="8" fill="white" />
+            </svg>
+            <span style={styles.logoText}>PRASA</span>
+          </div>
+          <button onClick={() => navigate("/")} style={styles.backBtn}>← Back to Home</button>
+        </div>
+      </nav>
+
+      <div style={styles.container}>
       {/* Progress Indicator */}
       <div style={styles.progressBar}>
         <div style={styles.progressTrack}>
@@ -179,18 +195,30 @@ const LongDistance = () => {
             distance: selectedRoute.distance,
             duration: selectedRoute.duration,
             arrivalTime: selectedDateTime?.time || "22:00",
-            intermediateStops: selectedRoute.intermediateStops || [],
+            intermediateStops: selectedRoute.intermediateStops || [], 
           }}
           onComplete={handleAnimationComplete}
         />
       )}
+      </div>
     </div>
   );
 };
 
 const styles = {
-  container: {
+  page: {
     minHeight: '100vh',
+    background: colors.neutral.gray100,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  nav: { background: "#0077CC", padding: "0 clamp(1rem, 3vw, 2rem)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)" },
+  navInner: { maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" },
+  logoGroup: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
+  logoText: { fontSize: "1.3rem", fontWeight: 700, color: "white", letterSpacing: "0.12em" },
+  backBtn: { background: "rgba(255,255,255,0.15)", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 500, cursor: "pointer" },
+  container: {
+    flex: 1,
     background: colors.neutral.gray100,
   },
   progressBar: {

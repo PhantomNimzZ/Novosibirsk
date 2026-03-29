@@ -10,6 +10,7 @@ import BookNow from './pages/bookings/BookNow.jsx';
 import CommuterCity from './pages/bookings/commuter/CommuterCity.jsx';
 import TrainSchedules from './pages/info/TrainSchedules.jsx';
 import ContactUs from './pages/info/ContactUs.jsx';
+import FAQ from './pages/info/FAQ.jsx';
 import ProtectedRoute from "./components/ProtectedRoute.jsx"; 
 
 import AdminLayout from "./components/admin/AdminLayout";
@@ -36,6 +37,7 @@ root.render(
       <Route path="/commuter/:cityId" element={<CommuterCity />} />
       <Route path="/schedules" element={<TrainSchedules />} />
       <Route path="/contact" element={<ContactUs />} />
+      <Route path="/faq" element={<FAQ />} />
       <Route path="/admin-login" element={<AdminLogin />} />
 
       {/* Admin Routes (Protected) */}

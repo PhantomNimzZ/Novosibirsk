@@ -75,7 +75,7 @@ function StartPage() {
           </div>
           <div style={styles.navLinks}>
             <a href="/schedules" style={styles.navLink}>Train Schedules</a>
-            <a href="/commuter" style={styles.navLink}>Commuter</a>
+            <a href="/faq" style={styles.navLink}>FAQ</a>
             <a href="/contact" style={styles.navLink}>Contact Us</a>
             <a href="/admin-login" style={styles.navLink}>Admin</a>
           </div>
@@ -245,6 +245,7 @@ function StartPage() {
             <a href="/schedules" style={styles.footerLink}>Schedules</a>
             <a href="/long-distance" style={styles.footerLink}>Long-Distance</a>
             <a href="/commuter" style={styles.footerLink}>Commuter</a>
+            <a href="/faq" style={styles.footerLink}>FAQ</a>
             <a href="/contact" style={styles.footerLink}>Contact Us</a>
             <a href="/admin-login" style={styles.footerLink}>Admin Portal</a>
           </div>

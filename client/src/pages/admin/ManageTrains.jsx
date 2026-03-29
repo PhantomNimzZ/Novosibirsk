@@ -11,7 +11,6 @@ const ManageTrains = () => {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrain, setEditingTrain] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +27,7 @@ const ManageTrains = () => {
         navigate("/admin/login");
         return;
       }
+
 
       const response = await fetch(`${API_BASE}/api/trains`, {
         headers: {
@@ -49,7 +49,6 @@ const ManageTrains = () => {
       setTrains(data);
       setLoading(false);
     } catch (err) {
-      console.error("❌ Error fetching trains:", err);
       setError(err.message);
       setLoading(false);
     }
@@ -60,7 +59,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // Warn before editing trains with active bookings
+  
   const handleEdit = async (train) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -88,7 +87,6 @@ const ManageTrains = () => {
         }
       }
     } catch (error) {
-      console.error("Error checking bookings:", error);
       // Continue anyway if check fails
     }
     
@@ -96,7 +94,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // Prevent deleting trains with active bookings
+  
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -120,7 +118,6 @@ const ManageTrains = () => {
         }
       }
     } catch (error) {
-      console.error("Error checking bookings:", error);
       alert("Error checking bookings. Please try again.");
       return;
     }
@@ -145,7 +142,6 @@ const ManageTrains = () => {
       setTrains(trains.filter((t) => t.id !== id));
       alert("Train deleted successfully");
     } catch (err) {
-      console.error("Error deleting train:", err);
       alert("Failed to delete train: " + err.message);
     }
   };
@@ -186,7 +182,6 @@ const ManageTrains = () => {
       setEditingTrain(null);
       alert("Train saved successfully");
     } catch (err) {
-      console.error("Error saving train:", err);
       alert("Failed to save train: " + err.message);
     }
   };
@@ -243,31 +238,9 @@ const ManageTrains = () => {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <input
-          type="text"
-          placeholder="Search by train name, number, route..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        />
-      </div>
-
       {/* Trains Table */}
       <TrainTable
-        trains={trains.filter((t) => {
-          if (!searchQuery.trim()) return true;
-          const q = searchQuery.toLowerCase();
-          return (
-            t.trainName?.toLowerCase().includes(q) ||
-            t.trainNumber?.toLowerCase().includes(q) ||
-            t.from?.toLowerCase().includes(q) ||
-            t.to?.toLowerCase().includes(q) ||
-            t.class?.toLowerCase().includes(q) ||
-            t.date?.includes(q)
-          );
-        })}
+        trains={trains}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />

@@ -324,7 +324,7 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
       <div style={styles.container}>
         {/* Header */}
         <div style={styles.header}>
-          <h1 style={styles.title}>🚉 {cityName} Metro</h1>
+          <h1 style={styles.title}>{cityName} Metro</h1>
           <p style={styles.subtitle}>Quick commuter booking</p>
         </div>
 

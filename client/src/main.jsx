@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
 import StartPage from './pages/start/StartPage.jsx';
-import RouteType from "./pages/bookings/RouteType.jsx";
 import LongDistance from './pages/bookings/long-distance/LongDistance.jsx';
 import Commuter from './pages/bookings/commuter/Commuter.jsx';
 import BookNow from './pages/bookings/BookNow.jsx';
@@ -30,7 +29,6 @@ root.render(
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<StartPage />} />
-      <Route path="/select" element={<RouteType />} />
       <Route path="/long-distance" element={<LongDistance />} />
       <Route path="/commuter" element={<Commuter />} />
       <Route path="/book" element={<BookNow />} />

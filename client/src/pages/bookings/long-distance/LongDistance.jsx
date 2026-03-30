@@ -63,14 +63,15 @@ const LongDistance = () => {
     navigate("/book", {
       state: {
         train: {
-          train: selectedTrain.name,
-          trainNumber: selectedTrain.number,
-          trainId: selectedTrain.id,
+          trainName: selectedTrain.trainName,
+          trainNumber: selectedTrain.trainNumber,
+          id: selectedTrain.id,
           from: selectedRoute.from,
           to: selectedRoute.to,
           date: selectedDateTime.date,
           time: selectedDateTime.time,
-          price: `R${selectedTrain.price}`,
+          price: selectedTrain.price,
+          class: selectedTrain.class || "Economy",
         },
       },
     });

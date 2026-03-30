@@ -43,7 +43,7 @@ const TrainResults = ({ route, dateTime, onSelectTrain }) => {
         setTrains(data.trains);
         setLoading(false);
       } catch (err) {
-        console.error("❌ Error fetching trains:", err);
+        console.error("Error fetching trains:", err);
         setError(err.message);
         setLoading(false);
       }

@@ -56,7 +56,7 @@ const TrainModal = ({ train, onClose, onSave }) => {
       price: parseFloat(formData.price),
       distance: formData.distance ? parseInt(formData.distance) : null,
       duration: formData.duration ? parseInt(formData.duration) : null,
-      date: new Date(formData.date).toISOString(),
+      date: formData.date, // YYYY-MM-DD from date input
     };
 
     onSave(dataToSave);

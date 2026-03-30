@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ ADDED: For active state detection
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -49,7 +49,7 @@ const AdminSidebar = () => {
             backgroundColor: (location.pathname === "/admin" || location.pathname === "/admin/dashboard") 
               ? "#3498db" 
               : "transparent",
-            color: "white", // ✅ Always white on dark background
+            color: "white",
           }}
           onMouseEnter={(e) => {
             if (location.pathname !== "/admin" && location.pathname !== "/admin/dashboard") {
@@ -79,7 +79,7 @@ const AdminSidebar = () => {
             backgroundColor: location.pathname === "/admin/create-booking" 
               ? "#3498db" 
               : "transparent",
-            color: "white", // ✅ Always white
+            color: "white",
           }}
           onMouseEnter={(e) => {
             if (location.pathname !== "/admin/create-booking") {
@@ -109,7 +109,7 @@ const AdminSidebar = () => {
             backgroundColor: location.pathname === "/admin/create-commuter-booking" 
               ? "#3498db" 
               : "transparent",
-            color: "white", // ✅ Always white
+            color: "white",
           }}
           onMouseEnter={(e) => {
             if (location.pathname !== "/admin/create-commuter-booking") {
@@ -125,7 +125,7 @@ const AdminSidebar = () => {
           🚇 Commuter
         </Link>
 
-        {/* Manage Bookings - FIXED ROUTE */}
+        
         <Link
           to="/admin/manage-bookings"
           style={{
@@ -139,7 +139,7 @@ const AdminSidebar = () => {
             backgroundColor: location.pathname === "/admin/manage-bookings" 
               ? "#3498db" 
               : "transparent",
-            color: "white", // ✅ Always white
+            color: "white",
           }}
           onMouseEnter={(e) => {
             if (location.pathname !== "/admin/manage-bookings") {
@@ -155,7 +155,7 @@ const AdminSidebar = () => {
           📋 Manage Bookings
         </Link>
 
-        {/* Manage Trains - FIXED ROUTE */}
+        
         <Link
           to="/admin/manage-trains"
           style={{
@@ -169,7 +169,7 @@ const AdminSidebar = () => {
             backgroundColor: location.pathname === "/admin/manage-trains" 
               ? "#3498db" 
               : "transparent",
-            color: "white", // ✅ Always white
+            color: "white",
           }}
           onMouseEnter={(e) => {
             if (location.pathname !== "/admin/manage-trains") {

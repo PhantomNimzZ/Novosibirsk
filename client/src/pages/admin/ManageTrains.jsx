@@ -24,7 +24,7 @@ const ManageTrains = () => {
 
       const token = localStorage.getItem("adminToken");
       if (!token) {
-        navigate("/admin/login");
+        navigate("/admin-login");
         return;
       }
 
@@ -37,7 +37,7 @@ const ManageTrains = () => {
 
       if (response.status === 401) {
         localStorage.removeItem("adminToken");
-        navigate("/admin/login");
+        navigate("/admin-login");
         return;
       }
 

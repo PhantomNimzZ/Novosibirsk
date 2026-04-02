@@ -16,7 +16,7 @@ const getDateStr = (daysFromNow) => {
   return d.toISOString().split("T")[0];
 };
 
-const DAYS_TO_SEED = 7;
+const DAYS_TO_SEED = 60;
 
 async function main() {
   console.log("🚆 Seeding database with real PRASA data...");

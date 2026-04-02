@@ -98,17 +98,14 @@ function calculateDuration(numStops) {
 async function seedCommuterTrains() {
   console.log('🚇 Seeding FULL LINE commuter trains (Approach B - Realistic)...\n');
   
- 
   console.log('🗑️  Cleaning up existing Metro Rail bookings and trains...');
 
-  // First find all Metro Rail train IDs
   const metroTrains = await prisma.train.findMany({
     where: { trainName: { contains: 'Metro Rail' } },
     select: { id: true },
   });
   const metroTrainIds = metroTrains.map((t) => t.id);
 
-  // Delete bookings for those trains first (onDelete: Restrict blocks train deletion otherwise)
   if (metroTrainIds.length > 0) {
     const deletedBookings = await prisma.booking.deleteMany({
       where: { trainId: { in: metroTrainIds } },
@@ -116,7 +113,6 @@ async function seedCommuterTrains() {
     console.log(`   Deleted ${deletedBookings.count} commuter bookings`);
   }
 
-  // Now delete the trains
   const deleted = await prisma.train.deleteMany({
     where: { trainName: { contains: 'Metro Rail' } },
   });
@@ -124,7 +120,7 @@ async function seedCommuterTrains() {
   
   const times = ['06:00', '12:00', '18:00'];
   const startDate = new Date();
-  const daysToSeed = 7;
+  const daysToSeed = 60;
   
   let trainCount = 0;
 

@@ -1,4 +1,5 @@
 // server/routes/admin/adminAuth.js
+// Note: dotenv.config() is called in server.js before this module is imported.
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
@@ -7,8 +8,6 @@ import bcrypt from "bcrypt";
 
 const router = express.Router();
 
-// ✅ No hardcoded credentials — all from environment variables
-// ✅ No fallback JWT secret — will throw clearly if misconfigured
 const SECRET_KEY = process.env.JWT_SECRET;
 if (!SECRET_KEY) {
   throw new Error("❌ JWT_SECRET environment variable is not set. Server cannot start safely.");
@@ -29,12 +28,10 @@ router.post("/login", async (req, res) => {
     return res.status(500).json({ error: "Server misconfiguration" });
   }
 
-  // Check email first (fast, no hashing needed)
   if (email !== adminEmail) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  // ✅ Compare password against bcrypt hash (secure, timing-safe)
   const passwordValid = await bcrypt.compare(password, adminPasswordHash);
 
   if (!passwordValid) {

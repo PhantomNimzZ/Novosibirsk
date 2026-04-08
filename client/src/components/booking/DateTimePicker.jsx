@@ -46,7 +46,6 @@ const DateTimePicker = ({ route, onSelect }) => {
         date: selectedDate,
         time: slot.time,
         label: slot.label,
-        price: slot.price,
       });
     }
   };
@@ -67,6 +66,16 @@ const DateTimePicker = ({ route, onSelect }) => {
   const isToday = (date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
+  };
+
+  // Check if a time slot has already departed (only matters for today)
+  const isTimePast = (slotTime, date) => {
+    if (!date || !isToday(date)) return false;
+    const [hours, minutes] = slotTime.split(":").map(Number);
+    const now = new Date();
+    const slotDate = new Date(date);
+    slotDate.setHours(hours, minutes, 0, 0);
+    return slotDate <= now;
   };
 
   return (
@@ -130,7 +139,7 @@ const DateTimePicker = ({ route, onSelect }) => {
           <div style={styles.timeSlotsGrid}>
             {timeSlots.map((slot, index) => {
               const isSelected = selectedTime?.time === slot.time;
-              const isLowSeats = slot.available < 10;
+              const isPast = isTimePast(slot.time, selectedDate);
               
               return (
                 <div
@@ -138,16 +147,17 @@ const DateTimePicker = ({ route, onSelect }) => {
                   style={{
                     ...styles.timeSlot,
                     ...(isSelected ? styles.timeSlotSelected : {}),
+                    ...(isPast ? styles.timeSlotPast : {}),
                   }}
-                  onClick={() => handleTimeClick(slot)}
+                  onClick={() => !isPast && handleTimeClick(slot)}
                   onMouseEnter={(e) => {
-                    if (!isSelected) {
+                    if (!isSelected && !isPast) {
                       e.currentTarget.style.transform = 'translateY(-2px)';
                       e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.15)';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) {
+                    if (!isSelected && !isPast) {
                       e.currentTarget.style.transform = 'translateY(0)';
                       e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
                     }
@@ -155,6 +165,7 @@ const DateTimePicker = ({ route, onSelect }) => {
                 >
                   <div style={styles.timeSlotTime}>{slot.time}</div>
                   <div style={styles.timeSlotLabel}>{slot.label}</div>
+                  {isPast && <div style={styles.pastBadge}>Departed</div>}
                 </div>
               );
             })}
@@ -173,10 +184,6 @@ const DateTimePicker = ({ route, onSelect }) => {
             <div style={styles.summaryRow}>
               <span>Departure:</span>
               <strong>{selectedTime.time} ({selectedTime.label})</strong>
-            </div>
-            <div style={styles.summaryRow}>
-              <span>Price:</span>
-              <strong style={{ color: colors.primary.blue }}>R{selectedTime.price}</strong>
             </div>
           </div>
           <button
@@ -314,6 +321,17 @@ const styles = {
     borderColor: colors.primary.blue,
     transform: 'translateY(-2px)',
     boxShadow: '0 8px 16px rgba(0, 102, 204, 0.2)',
+  },
+  timeSlotPast: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+    background: colors.neutral.gray100,
+  },
+  pastBadge: {
+    fontSize: '0.7rem',
+    color: colors.neutral.gray700,
+    fontWeight: typography.weight.semibold,
+    marginTop: '0.25rem',
   },
   timeSlotTime: {
     fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',

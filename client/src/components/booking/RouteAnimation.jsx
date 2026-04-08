@@ -35,8 +35,6 @@ const RouteAnimation = ({ route, onComplete }) => {
       to,
     ];
     
-    console.log(`🗺️ Route: ${from} → ${to}`);
-    console.log(`🚉 Stops: ${cityNames.join(' → ')}`);
     
     return cityNames.map((name, index) => ({
       name,
@@ -95,12 +93,10 @@ const RouteAnimation = ({ route, onComplete }) => {
     timeline.current = tl;
     totalDuration.current = timeAccumulator;
     
-    console.log('📅 Timeline built:', tl.length, 'phases');
     tl.forEach((p, i) => {
       const label = p.type === 'station' 
         ? `station ${p.index} (${stations[p.index].name})`
         : `${p.type} ${p.from}→${p.to}`;
-      console.log(`  ${i}: ${label} | ${p.start}ms - ${p.start + p.duration}ms (${p.duration}ms)`);
     });
   }, [stations]);
 
@@ -112,7 +108,6 @@ const RouteAnimation = ({ route, onComplete }) => {
 
     const routeFrom = route?.from || 'Cape Town';
     const routeTo = route?.to || 'Johannesburg';
-    console.log(`🎬 Starting cinematic route animation: ${routeFrom} → ${routeTo}`);
 
     // ===== SCENE SETUP =====
     const scene = new THREE.Scene();
@@ -184,7 +179,6 @@ const RouteAnimation = ({ route, onComplete }) => {
       group.userData.stationName = station.name;
       group.visible = false;
       
-      console.log(`📦 Loading city: ${station.name}...`);
       getLandmarkForCity(station.name)(group);
       
       scene.add(group);
@@ -199,7 +193,6 @@ const RouteAnimation = ({ route, onComplete }) => {
       
       const fromCity = stations[i].name;
       const toCity = stations[i + 1].name;
-      console.log(`📦 Loading transition: ${fromCity} → ${toCity}...`);
       getTransitionTerrain(fromCity, toCity)(group);
       
       scene.add(group);
@@ -227,7 +220,6 @@ const RouteAnimation = ({ route, onComplete }) => {
       if (startTime === null) {
         startTime = timestamp;
         lastFrameTime = timestamp;
-        console.log(`⏱️ Animation clock started at RAF timestamp: ${timestamp.toFixed(0)}ms`);
       }
       
       const globalElapsed = timestamp - startTime;
@@ -236,7 +228,6 @@ const RouteAnimation = ({ route, onComplete }) => {
       frameCount++;
       
       if (frameDelta > 200) {
-        console.warn(`⚠️ Large frame delta: ${frameDelta.toFixed(0)}ms at frame ${frameCount}`);
       }
       
       const tl = timeline.current;
@@ -254,14 +245,12 @@ const RouteAnimation = ({ route, onComplete }) => {
             const label = phase.type === 'station' 
               ? `station ${phase.index} (${stations[phase.index].name})`
               : `${phase.type} ${stations[phase.from].name}→${stations[phase.to].name}`;
-            console.log(`🎯 Phase: ${label} | ${phase.start}ms → ${phase.start + phase.duration}ms`);
           }
           break;
         }
       }
       
       if (!currentPhase) {
-        console.log(`🎬 Animation complete! globalElapsed=${globalElapsed.toFixed(0)}ms`);
         animationComplete = true;
         setTimeout(() => { if (onComplete) onComplete(); }, 1000);
         return;
@@ -390,7 +379,6 @@ const RouteAnimation = ({ route, onComplete }) => {
     };
 
     setTimeout(() => setIsSkippable(true), 2000);
-    console.log("🎬 Starting animation...");
     animationFrameRef.current = requestAnimationFrame(animate);
 
     const handleResize = () => {

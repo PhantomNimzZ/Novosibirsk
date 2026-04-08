@@ -77,36 +77,6 @@ const metroLines = {
       },
     ]
   },
-  "pretoria": {
-    cityName: "Pretoria",
-    lines: [
-      {
-        name: "Pretoria Central Line",
-        stations: ["Pretoria", "Hatfield", "Centurion", "Irene", "Zwartkop"]
-      },
-      {
-        name: "Mamelodi Line",
-        stations: ["Pretoria", "Saulsville", "Mamelodi"]
-      },
-      {
-        name: "Mabopane Line",
-        stations: ["Pretoria", "Atteridgeville", "Ga-Rankuwa", "Soshanguve", "Mabopane"]
-      },
-      {
-        name: "Hercules Line",
-        stations: ["Pretoria", "Hercules"]
-      },
-    ]
-  },
-  "port-elizabeth": {
-    cityName: "Port Elizabeth",
-    lines: [
-      {
-        name: "Main Line",
-        stations: ["Port Elizabeth", "Humewood", "Summerstrand", "New Brighton", "Motherwell", "Coega", "Despatch", "Uitenhage"]
-      },
-    ]
-  },
 };
 
 // Calculate price based on number of stops
@@ -128,20 +98,29 @@ function calculateDuration(numStops) {
 async function seedCommuterTrains() {
   console.log('🚇 Seeding FULL LINE commuter trains (Approach B - Realistic)...\n');
   
-  // ✅ DELETE EXISTING METRO RAIL TRAINS FIRST (prevent duplicates)
-  console.log('🗑️  Cleaning up existing Metro Rail trains...');
+  console.log('🗑️  Cleaning up existing Metro Rail bookings and trains...');
+
+  const metroTrains = await prisma.train.findMany({
+    where: { trainName: { contains: 'Metro Rail' } },
+    select: { id: true },
+  });
+  const metroTrainIds = metroTrains.map((t) => t.id);
+
+  if (metroTrainIds.length > 0) {
+    const deletedBookings = await prisma.booking.deleteMany({
+      where: { trainId: { in: metroTrainIds } },
+    });
+    console.log(`   Deleted ${deletedBookings.count} commuter bookings`);
+  }
+
   const deleted = await prisma.train.deleteMany({
-    where: {
-      train: {
-        contains: 'Metro Rail'
-      }
-    }
+    where: { trainName: { contains: 'Metro Rail' } },
   });
   console.log(`   Deleted ${deleted.count} existing Metro Rail trains\n`);
   
   const times = ['06:00', '12:00', '18:00'];
-  const startDate = new Date(); // ✅ Start from TODAY
-  const daysToSeed = 7;
+  const startDate = new Date();
+  const daysToSeed = 60;
   
   let trainCount = 0;
 
@@ -167,19 +146,19 @@ async function seedCommuterTrains() {
           try {
             await prisma.train.create({
               data: {
-                train: `Metro Rail - ${line.name}`,
+                trainName: `Metro Rail - ${line.name}`,
                 trainNumber: trainNumber,
                 from: fromStation,
                 to: toStation,
                 class: "Economy",
                 seats: 999,
                 price: price,
-                date: date.toISOString(),
+                date: date.toISOString().split('T')[0],
                 time: time,
                 distance: distance,
                 duration: duration,
                 amenities: "General Seating",
-                intermediateStops: JSON.stringify(line.stations), // ✅ FULL STATION LIST
+                intermediateStops: JSON.stringify(line.stations),
               }
             });
             

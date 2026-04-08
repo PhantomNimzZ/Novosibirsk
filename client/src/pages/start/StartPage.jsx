@@ -1,396 +1,573 @@
 // client/src/pages/start/StartPage.jsx
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { colors, typography, spacing } from "../../styles/tokens";
+import { useState, useEffect, useCallback } from "react";
+
+const SLIDES = [
+  {
+    url: "/images/cape-town.avif",
+    city: "Cape Town",
+    caption: "Cape Town & Table Mountain",
+  },
+  {
+    url: "/images/johannesburg.avif",
+    city: "Johannesburg",
+    caption: "Johannesburg Skyline",
+  },
+  {
+    url: "/images/durban.avif",
+    city: "Durban",
+    caption: "Durban Beachfront",
+  },
+];
 
 function StartPage() {
   const navigate = useNavigate();
   const [mounted, setMounted] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
+    requestAnimationFrame(() => setMounted(true));
+
+    // Preload images
+    SLIDES.forEach((slide) => {
+      const img = new Image();
+      img.src = slide.url;
+    });
+  }, []);
+
+  // Auto-advance slideshow
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const goToSlide = useCallback((index) => {
+    setCurrentSlide(index);
   }, []);
 
   return (
-    <div style={styles.container}>
-      {/* Animated Background Map */}
-      <div style={styles.backgroundMap}>
-        <svg viewBox="0 0 1200 800" style={styles.svg}>
-          {/* Simplified South Africa outline */}
-          <path
-            d="M 300,200 L 400,180 L 500,200 L 600,220 L 700,240 L 800,280 L 850,350 L 850,450 L 800,550 L 700,600 L 600,620 L 500,630 L 400,620 L 300,580 L 250,500 L 250,350 Z"
-            fill="none"
-            stroke={colors.primary.blue}
-            strokeWidth="2"
-            opacity="0.2"
-            style={styles.mapPath}
-          />
-          
-          {/* Animated train routes */}
-          <line
-            x1="300" y1="600"
-            x2="850" y2="300"
-            stroke={colors.accent.orange}
-            strokeWidth="2"
-            strokeDasharray="10,5"
-            opacity="0.4"
-            style={{...styles.routeLine, animationDelay: '0s'}}
-          />
-          <line
-            x1="850" y1="300"
-            x2="700" y2="580"
-            stroke={colors.accent.orange}
-            strokeWidth="2"
-            strokeDasharray="10,5"
-            opacity="0.4"
-            style={{...styles.routeLine, animationDelay: '1s'}}
-          />
-          
-          {/* City markers */}
-          <circle cx="300" cy="600" r="8" fill={colors.primary.blue} style={styles.cityMarker} />
-          <circle cx="850" cy="300" r="8" fill={colors.primary.blue} style={{...styles.cityMarker, animationDelay: '0.3s'}} />
-          <circle cx="700" cy="580" r="8" fill={colors.primary.blue} style={{...styles.cityMarker, animationDelay: '0.6s'}} />
-        </svg>
-      </div>
-
-      {/* Main Content */}
-      <div style={{...styles.content, opacity: mounted ? 1 : 0}}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.logoContainer}>
-            <div style={styles.logoIcon}>🚆</div>
-            <h1 style={styles.logo}>PRASA</h1>
+    <div style={styles.page}>
+      {/* Top Navigation Bar */}
+      <nav style={styles.nav}>
+        <div style={styles.navInner}>
+          <div style={styles.logoGroup}>
+            <svg width="44" height="44" viewBox="0 0 100 100" style={styles.logoSvg}>
+              <circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="3" />
+              {[...Array(12)].map((_, i) => (
+                <line
+                  key={i}
+                  x1="50" y1="12"
+                  x2="50" y2="38"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  transform={`rotate(${i * 30} 50 50)`}
+                />
+              ))}
+              <circle cx="50" cy="50" r="8" fill="white" />
+            </svg>
+            <div>
+              <div style={styles.logoText}>PRASA</div>
+              <div style={styles.logoSub}>Passenger Rail Agency of South Africa</div>
+            </div>
           </div>
-          <p style={styles.tagline}>South Africa's Railway Network</p>
+          <div style={styles.navLinks}>
+            <a href="/schedules" style={styles.navLink}>Train Schedules</a>
+            <a href="/faq" style={styles.navLink}>FAQ</a>
+            <a href="/contact" style={styles.navLink}>Contact Us</a>
+            <a href="/admin-login" style={styles.navLink}>Admin</a>
+          </div>
         </div>
+      </nav>
 
-        {/* Hero Section */}
-        <div style={styles.hero}>
-          <h2 style={styles.heroTitle}>Book Your Journey</h2>
+      {/* Hero Section with Photo Slideshow */}
+      <div style={styles.hero}>
+        {/* Slideshow Background */}
+        {SLIDES.map((slide, index) => (
+          <div
+            key={index}
+            style={{
+              ...styles.slideImage,
+              backgroundImage: `url(${slide.url})`,
+              opacity: currentSlide === index ? 1 : 0,
+            }}
+          />
+        ))}
+
+        {/* Dark overlay for text readability */}
+        <div style={styles.heroOverlay} />
+
+        {/* Hero Content */}
+        <div style={{
+          ...styles.heroContent,
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(30px)',
+        }}>
+          <h1 style={styles.heroTitle}>Travel South Africa by Rail</h1>
           <p style={styles.heroSubtitle}>
-            Fast, reliable train travel across South Africa
+            Book long-distance journeys and daily commuter trains across the nation's railway network
           </p>
+
+          {/* Slide indicator dots */}
+          <div style={styles.dotRow}>
+            {SLIDES.map((slide, index) => (
+              <button
+                key={index}
+                onClick={() => goToSlide(index)}
+                style={{
+                  ...styles.dot,
+                  ...(currentSlide === index ? styles.dotActive : {}),
+                }}
+                aria-label={`Show ${slide.city}`}
+              />
+            ))}
+          </div>
+          <div style={styles.captionText}>
+            {SLIDES[currentSlide].caption}
+          </div>
+
+          {/* Booking Cards */}
+          <div style={styles.cardRow}>
+            <div
+              style={styles.card}
+              onClick={() => navigate("/long-distance")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-6px) scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 24px 48px rgba(0, 0, 0, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.2)';
+              }}
+            >
+              <div style={styles.cardAccent} />
+              <div style={styles.cardBody}>
+                <div style={styles.cardIconRow}>
+                  <span style={styles.cardIcon}>🌍</span>
+                  <span style={styles.cardBadge}>Shosholoza Meyl • Premier Classe</span>
+                </div>
+                <h3 style={styles.cardTitle}>Long-Distance</h3>
+                <p style={styles.cardDesc}>Travel between cities with comfort and style</p>
+                <div style={styles.cardRoutes}>
+                  <span style={styles.routeChip}>Cape Town ↔ Johannesburg</span>
+                  <span style={styles.routeChip}>Johannesburg ↔ Durban</span>
+                  <span style={styles.routeChip}>Cape Town ↔ Durban</span>
+                </div>
+                <div style={styles.cardCta}>
+                  Book Now <span style={styles.ctaArrow}>→</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={styles.card}
+              onClick={() => navigate("/commuter")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-6px) scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 24px 48px rgba(0, 0, 0, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.2)';
+              }}
+            >
+              <div style={{ ...styles.cardAccent, background: 'linear-gradient(135deg, #FF6B35, #FFB84D)' }} />
+              <div style={styles.cardBody}>
+                <div style={styles.cardIconRow}>
+                  <span style={styles.cardIcon}>🏙️</span>
+                  <span style={{ ...styles.cardBadge, background: '#FFF3EB', color: '#FF6B35' }}>Metrorail</span>
+                </div>
+                <h3 style={styles.cardTitle}>Commuter</h3>
+                <p style={styles.cardDesc}>Daily metro travel within major cities</p>
+                <div style={styles.cardRoutes}>
+                  <span style={styles.routeChip}>Cape Town Metro</span>
+                  <span style={styles.routeChip}>Johannesburg Metro</span>
+                  <span style={styles.routeChip}>Durban Metro</span>
+                </div>
+                <div style={{ ...styles.cardCta, color: '#FF6B35' }}>
+                  Book Now <span style={styles.ctaArrow}>→</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* Booking Options */}
-        <div style={styles.cardContainer}>
-          {/* Long-Distance Card */}
-          <div
-            style={{...styles.card, ...styles.cardLongDistance}}
-            onClick={() => navigate("/long-distance")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 51, 102, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            <div style={styles.cardIcon}>🌍</div>
-            <h3 style={styles.cardTitle}>Long-Distance</h3>
-            <p style={styles.cardDescription}>
-              Travel between cities with comfort and style
-            </p>
-            <div style={styles.cardRoutes}>
-              <div style={styles.routeBadge}>Cape Town ↔ Johannesburg</div>
-              <div style={styles.routeBadge}>Johannesburg ↔ Durban</div>
-              <div style={styles.routeBadge}>Cape Town ↔ Durban</div>
-            </div>
-            <div style={styles.cardCTA}>
-              <span style={styles.ctaText}>Book Now</span>
-              <span style={styles.ctaArrow}>→</span>
-            </div>
-          </div>
-
-          {/* Commuter Card */}
-          <div
-            style={{...styles.card, ...styles.cardCommuter}}
-            onClick={() => navigate("/commuter")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px)';
-              e.currentTarget.style.boxShadow = '0 20px 40px rgba(255, 107, 53, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            <div style={styles.cardIcon}>🏙️</div>
-            <h3 style={styles.cardTitle}>Commuter</h3>
-            <p style={styles.cardDescription}>
-              Daily metro travel within major cities
-            </p>
-            <div style={styles.cardRoutes}>
-              <div style={styles.routeBadge}>🏙️ Cape Town Metro</div>
-              <div style={styles.routeBadge}>🏙️ Johannesburg Metro</div>
-              <div style={styles.routeBadge}>🏙️ Durban Metro</div>
-              <div style={styles.routeBadge}>🏙️ Pretoria Metro</div>
-            </div>
-            <div style={styles.cardCTA}>
-              <span style={styles.ctaText}>Book Now</span>
-              <span style={styles.ctaArrow}>→</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Feature Pills */}
-        <div style={styles.features}>
-          <div style={styles.featurePill}>
-            <span style={styles.featureIcon}>📍</span>
-            <span style={styles.featureText}>Live Tracking</span>
-          </div>
-          <div style={styles.featurePill}>
-            <span style={styles.featureIcon}>💳</span>
-            <span style={styles.featureText}>Mobile Tickets</span>
-          </div>
-          <div style={styles.featurePill}>
-            <span style={styles.featureIcon}>🌐</span>
-            <span style={styles.featureText}>Offline Mode</span>
-          </div>
-        </div>
-
-        {/* Admin Link (subtle, bottom corner) */}
-        <a
-          href="/admin-login"
-          style={styles.adminLink}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.3'}
-        >
-          Admin
-        </a>
       </div>
 
-      {/* Inline CSS for animations */}
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
-        }
+      {/* Feature Strip */}
+      <div style={{
+        ...styles.featureStrip,
+        opacity: mounted ? 1 : 0,
+        transition: 'opacity 1.2s ease 0.6s',
+      }}>
+        <div style={styles.featureItem}>
+          <span style={styles.featureIcon}>🎫</span>
+          <div>
+            <div style={styles.featureLabel}>Mobile Tickets</div>
+            <div style={styles.featureDesc}>Download your ticket instantly</div>
+          </div>
+        </div>
+        <div style={styles.featureDivider} />
+        <div style={styles.featureItem}>
+          <span style={styles.featureIcon}>🪑</span>
+          <div>
+            <div style={styles.featureLabel}>Seat Selection</div>
+            <div style={styles.featureDesc}>Choose your preferred seat</div>
+          </div>
+        </div>
+        <div style={styles.featureDivider} />
+        <div style={styles.featureItem}>
+          <span style={styles.featureIcon}>🔒</span>
+          <div>
+            <div style={styles.featureLabel}>Secure Booking</div>
+            <div style={styles.featureDesc}>Safe and reliable payments</div>
+          </div>
+        </div>
+        <div style={styles.featureDivider} />
+        <div style={styles.featureItem}>
+          <span style={styles.featureIcon}>🚆</span>
+          <div>
+            <div style={styles.featureLabel}>6 Major Routes</div>
+            <div style={styles.featureDesc}>Connecting SA's key cities</div>
+          </div>
+        </div>
+      </div>
 
-        @keyframes dash {
-          to { stroke-dashoffset: -1000; }
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.2); opacity: 0.7; }
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Mobile Responsive Adjustments */
-        @media (max-width: 768px) {
-          /* Reduce animation on mobile for performance */
-          .map-path, .route-line, .city-marker {
-            animation: none !important;
-          }
-        }
-      `}</style>
+      {/* Footer */}
+      <footer style={styles.footer}>
+        <div style={styles.footerInner}>
+          <div style={styles.footerBrand}>
+            <span style={styles.footerLogo}>PRASA</span>
+            <span style={styles.footerTagline}>Passenger Rail Agency of South Africa</span>
+          </div>
+          <div style={styles.footerLinks}>
+            <a href="/schedules" style={styles.footerLink}>Schedules</a>
+            <a href="/long-distance" style={styles.footerLink}>Long-Distance</a>
+            <a href="/commuter" style={styles.footerLink}>Commuter</a>
+            <a href="/faq" style={styles.footerLink}>FAQ</a>
+            <a href="/contact" style={styles.footerLink}>Contact Us</a>
+            <a href="/admin-login" style={styles.footerLink}>Admin Portal</a>
+          </div>
+          <div style={styles.footerCopy}>
+            © 2026 PRASA Demo — Built for demonstration purposes
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
-// Styles object with mobile-first responsive design
 const styles = {
-  container: {
-    position: 'relative',
+  page: {
     minHeight: '100vh',
-    background: `linear-gradient(135deg, ${colors.primary.navy} 0%, ${colors.primary.blue} 100%)`,
-    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    background: '#001122',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  },
+
+  // ── Nav ──
+  nav: {
+    background: '#0077CC',
+    padding: '0 clamp(1rem, 3vw, 2rem)',
+    position: 'relative',
+    zIndex: 20,
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.15)',
+  },
+  navInner: {
+    maxWidth: '1280px',
+    margin: '0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: '70px',
+  },
+  logoGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  logoSvg: {
+    flexShrink: 0,
+  },
+  logoText: {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: 'white',
+    letterSpacing: '0.15em',
+    lineHeight: 1.1,
+  },
+  logoSub: {
+    fontSize: '0.65rem',
+    color: 'rgba(255,255,255,0.75)',
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    lineHeight: 1.2,
+  },
+  navLinks: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'clamp(1rem, 3vw, 2rem)',
+  },
+  navLink: {
+    color: 'rgba(255,255,255,0.9)',
+    textDecoration: 'none',
+    fontSize: '0.9rem',
+    fontWeight: 500,
+    letterSpacing: '0.01em',
+    transition: 'color 0.2s',
+  },
+
+  // ── Hero ──
+  hero: {
+    position: 'relative',
+    flex: 1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontFamily: typography.fontFamily.body,
+    overflow: 'hidden',
+    minHeight: 'max(580px, 75vh)',
   },
-  backgroundMap: {
+  slideImage: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.15,
-    pointerEvents: 'none',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    transition: 'opacity 1.5s ease-in-out',
   },
-  svg: {
+  heroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
+    background: 'linear-gradient(to bottom, rgba(0,20,40,0.5) 0%, rgba(0,10,20,0.65) 50%, rgba(0,10,20,0.85) 100%)',
+    zIndex: 2,
   },
-  mapPath: {
-    animation: 'float 8s ease-in-out infinite',
-  },
-  routeLine: {
-    animation: 'dash 20s linear infinite',
-  },
-  cityMarker: {
-    animation: 'pulse 3s ease-in-out infinite',
-  },
-  content: {
+  heroContent: {
     position: 'relative',
     zIndex: 10,
+    textAlign: 'center',
+    padding: 'clamp(1rem, 3vw, 2rem)',
+    maxWidth: '1100px',
     width: '100%',
-    maxWidth: '1200px',
-    padding: spacing.md, // Reduced for mobile
-    transition: 'opacity 1s ease-out',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  logoContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    flexWrap: 'wrap', // Wrap on very small screens
-  },
-  logoIcon: {
-    fontSize: '2.5rem', // Fixed size for consistency
-  },
-  logo: {
-    fontSize: 'clamp(2rem, 8vw, 3rem)', // Responsive font size
-    fontWeight: typography.weight.bold,
-    color: colors.neutral.white,
-    margin: 0,
-    letterSpacing: '0.1em',
-  },
-  tagline: {
-    fontSize: 'clamp(0.875rem, 3vw, 1.125rem)', // Responsive
-    color: colors.primary.pale,
-    margin: 0,
-    fontWeight: typography.weight.normal,
-    padding: '0 1rem', // Prevent edge touching
-  },
-  hero: {
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    padding: '0 1rem',
+    transition: 'opacity 1s ease, transform 1s ease',
   },
   heroTitle: {
-    fontSize: 'clamp(1.75rem, 6vw, 2.25rem)', // Responsive
-    fontWeight: typography.weight.bold,
-    color: colors.neutral.white,
-    margin: `0 0 ${spacing.sm} 0`,
+    fontSize: 'clamp(1.75rem, 5vw, 3rem)',
+    fontWeight: 700,
+    color: 'white',
+    margin: '0 0 0.75rem',
+    letterSpacing: '-0.01em',
+    textShadow: '0 2px 20px rgba(0,0,0,0.4)',
   },
   heroSubtitle: {
-    fontSize: 'clamp(0.875rem, 3vw, 1.25rem)', // Responsive
-    color: colors.primary.pale,
-    margin: 0,
-    fontWeight: typography.weight.normal,
+    fontSize: 'clamp(0.9rem, 2.5vw, 1.15rem)',
+    color: 'rgba(255,255,255,0.85)',
+    margin: '0 auto 1.25rem',
+    maxWidth: '600px',
+    lineHeight: 1.6,
+    textShadow: '0 1px 8px rgba(0,0,0,0.3)',
   },
-  cardContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', // Mobile-first grid
-    gap: spacing.lg,
-    marginBottom: spacing.xl,
-    padding: '0 0.5rem', // Small side padding
+
+  // ── Slide indicators ──
+  dotRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '10px',
+    marginBottom: '0.4rem',
+  },
+  dot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    borderWidth: '2px',
+    borderStyle: 'solid',
+    borderColor: 'rgba(255,255,255,0.6)',
+    background: 'transparent',
+    cursor: 'pointer',
+    padding: 0,
+    transition: 'all 0.3s ease',
+  },
+  dotActive: {
+    background: 'white',
+    borderColor: 'white',
+    transform: 'scale(1.2)',
+  },
+  captionText: {
+    fontSize: '0.8rem',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: '1.5rem',
+    letterSpacing: '0.03em',
+  },
+
+  // ── Cards ──
+  cardRow: {
+    display: 'flex',
+    gap: 'clamp(1rem, 3vw, 1.5rem)',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
   card: {
-    background: colors.neutral.white,
-    borderRadius: '20px',
-    padding: spacing.lg, // Reduced slightly for mobile
-    cursor: 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-    position: 'relative',
+    width: 'min(100%, 420px)',
+    background: 'rgba(255,255,255,0.97)',
+    borderRadius: '16px',
     overflow: 'hidden',
-    minHeight: '300px', // Ensure consistent height
+    cursor: 'pointer',
+    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.2)',
+    textAlign: 'left',
+    backdropFilter: 'blur(10px)',
   },
-  cardLongDistance: {
-    borderTop: `4px solid ${colors.primary.blue}`,
+  cardAccent: {
+    height: '5px',
+    background: 'linear-gradient(135deg, #003366, #0066CC)',
   },
-  cardCommuter: {
-    borderTop: `4px solid ${colors.accent.orange}`,
+  cardBody: {
+    padding: 'clamp(1.25rem, 3vw, 1.75rem)',
+  },
+  cardIconRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    marginBottom: '0.75rem',
   },
   cardIcon: {
-    fontSize: '2.5rem', // Fixed for consistency
-    marginBottom: spacing.sm,
+    fontSize: '1.75rem',
+  },
+  cardBadge: {
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    color: '#0066CC',
+    background: '#E6F2FF',
+    padding: '3px 10px',
+    borderRadius: '20px',
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
   },
   cardTitle: {
-    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', // Responsive
-    fontWeight: typography.weight.bold,
-    color: colors.neutral.black,
-    margin: `0 0 ${spacing.xs} 0`,
+    fontSize: 'clamp(1.25rem, 3vw, 1.5rem)',
+    fontWeight: 700,
+    color: '#1A1A1A',
+    margin: '0 0 0.5rem',
   },
-  cardDescription: {
-    fontSize: 'clamp(0.875rem, 2.5vw, 1rem)', // Responsive
-    color: colors.neutral.gray700,
-    margin: `0 0 ${spacing.md} 0`,
-    lineHeight: 1.6,
+  cardDesc: {
+    fontSize: '0.9rem',
+    color: '#4A4A4A',
+    margin: '0 0 1rem',
+    lineHeight: 1.5,
   },
   cardRoutes: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
+    flexWrap: 'wrap',
+    gap: '0.4rem',
+    marginBottom: '1.25rem',
   },
-  routeBadge: {
-    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', // Responsive
-    color: colors.neutral.gray700,
-    padding: `${spacing.xs} ${spacing.sm}`,
-    background: colors.neutral.gray100,
+  routeChip: {
+    fontSize: '0.75rem',
+    color: '#4A4A4A',
+    background: '#F5F5F5',
+    padding: '5px 12px',
     borderRadius: '6px',
-    display: 'inline-block',
+    fontWeight: 500,
   },
-  cardCTA: {
+  cardCta: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#0066CC',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    fontSize: 'clamp(1rem, 3vw, 1.125rem)', // Responsive
-    fontWeight: typography.weight.semibold,
-    color: colors.primary.blue,
-    marginTop: 'auto', // Push to bottom
   },
-  ctaText: {},
   ctaArrow: {
-    fontSize: '1.5rem', // Fixed size
+    fontSize: '1.25rem',
     transition: 'transform 0.3s ease',
   },
-  features: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-    padding: '0 1rem',
-  },
-  featurePill: {
+
+  // ── Features ──
+  featureStrip: {
+    background: 'white',
     display: 'flex',
     alignItems: 'center',
-    gap: spacing.xs,
-    padding: `${spacing.xs} ${spacing.md}`,
-    background: 'rgba(255, 255, 255, 0.1)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '50px',
-    color: colors.neutral.white,
-    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', // Responsive
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    whiteSpace: 'nowrap', // Prevent text wrapping
+    justifyContent: 'center',
+    gap: 'clamp(1rem, 3vw, 2.5rem)',
+    padding: 'clamp(1rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem)',
+    flexWrap: 'wrap',
+    borderTop: '1px solid #eee',
+  },
+  featureItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
   },
   featureIcon: {
-    fontSize: '1rem', // Fixed size
+    fontSize: '1.5rem',
   },
-  featureText: {
-    fontWeight: typography.weight.medium,
+  featureLabel: {
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: '#1A1A1A',
   },
-  adminLink: {
-    position: 'absolute',
-    bottom: spacing.md,
-    right: spacing.md,
-    color: colors.neutral.white,
-    fontSize: typography.scale.xs,
+  featureDesc: {
+    fontSize: '0.75rem',
+    color: '#7D7D7D',
+  },
+  featureDivider: {
+    width: '1px',
+    height: '32px',
+    background: '#E0E0E0',
+  },
+
+  // ── Footer ──
+  footer: {
+    background: '#1A2332',
+    padding: 'clamp(1.5rem, 3vw, 2rem) clamp(1rem, 3vw, 2rem)',
+  },
+  footerInner: {
+    maxWidth: '1280px',
+    margin: '0 auto',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '1rem',
+  },
+  footerBrand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  },
+  footerLogo: {
+    fontSize: '1.1rem',
+    fontWeight: 700,
+    color: 'white',
+    letterSpacing: '0.1em',
+  },
+  footerTagline: {
+    fontSize: '0.7rem',
+    color: 'rgba(255,255,255,0.5)',
+  },
+  footerLinks: {
+    display: 'flex',
+    gap: '1.5rem',
+  },
+  footerLink: {
+    color: 'rgba(255,255,255,0.6)',
     textDecoration: 'none',
-    opacity: 0.3,
-    transition: 'opacity 0.3s ease',
+    fontSize: '0.8rem',
+    fontWeight: 500,
+    transition: 'color 0.2s',
+  },
+  footerCopy: {
+    fontSize: '0.7rem',
+    color: 'rgba(255,255,255,0.35)',
+    width: '100%',
+    textAlign: 'center',
+    marginTop: '0.5rem',
   },
 };
 

@@ -1,6 +1,7 @@
 // client/src/pages/admin/AdminLogin.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE } from "../../api/config";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -15,8 +16,7 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      // ✅ FIXED: Correct endpoint path
-      const res = await fetch("http://localhost:3001/api/admin/auth/login", {
+      const res = await fetch(`${API_BASE}/api/admin/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

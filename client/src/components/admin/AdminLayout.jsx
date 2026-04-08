@@ -18,7 +18,7 @@ const AdminLayout = () => {
           <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
         </header>
         <main style={{ padding: "2rem", backgroundColor: "#f8f9fa", flex: 1 }}>
-          {/* 👇 THIS is where nested routes like /admin/manage-bookings will render */}
+          
           <Outlet />
         </main>
       </div>

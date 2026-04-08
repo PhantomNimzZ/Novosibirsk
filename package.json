@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "postprocessing": "^6.38.3"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
   }
 }

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: novosibirsk-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npx prisma generate && npx prisma db push && node prisma/seed.js && node prisma/seedCommuterV2.js
+    startCommand: npm start
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@prasa.com
+      - key: ADMIN_PASSWORD_HASH
+        value: $2b$10$YourBcryptHashHere
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001

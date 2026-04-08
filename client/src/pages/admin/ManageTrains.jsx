@@ -24,11 +24,10 @@ const ManageTrains = () => {
 
       const token = localStorage.getItem("adminToken");
       if (!token) {
-        navigate("/admin/login");
+        navigate("/admin-login");
         return;
       }
 
-      console.log("🔍 Fetching trains from:", `${API_BASE}/api/trains`);
 
       const response = await fetch(`${API_BASE}/api/trains`, {
         headers: {
@@ -38,7 +37,7 @@ const ManageTrains = () => {
 
       if (response.status === 401) {
         localStorage.removeItem("adminToken");
-        navigate("/admin/login");
+        navigate("/admin-login");
         return;
       }
 
@@ -47,11 +46,9 @@ const ManageTrains = () => {
       }
 
       const data = await response.json();
-      console.log("✅ Fetched trains:", data);
       setTrains(data);
       setLoading(false);
     } catch (err) {
-      console.error("❌ Error fetching trains:", err);
       setError(err.message);
       setLoading(false);
     }
@@ -62,7 +59,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ ISSUE 6 FIX: Warn before editing trains with active bookings
+  
   const handleEdit = async (train) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -90,7 +87,6 @@ const ManageTrains = () => {
         }
       }
     } catch (error) {
-      console.error("Error checking bookings:", error);
       // Continue anyway if check fails
     }
     
@@ -98,7 +94,7 @@ const ManageTrains = () => {
     setIsModalOpen(true);
   };
 
-  // ✅ ISSUE 6 & 8 FIX: Prevent deleting trains with active bookings
+  
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -122,7 +118,6 @@ const ManageTrains = () => {
         }
       }
     } catch (error) {
-      console.error("Error checking bookings:", error);
       alert("Error checking bookings. Please try again.");
       return;
     }
@@ -147,7 +142,6 @@ const ManageTrains = () => {
       setTrains(trains.filter((t) => t.id !== id));
       alert("Train deleted successfully");
     } catch (err) {
-      console.error("Error deleting train:", err);
       alert("Failed to delete train: " + err.message);
     }
   };
@@ -188,7 +182,6 @@ const ManageTrains = () => {
       setEditingTrain(null);
       alert("Train saved successfully");
     } catch (err) {
-      console.error("Error saving train:", err);
       alert("Failed to save train: " + err.message);
     }
   };

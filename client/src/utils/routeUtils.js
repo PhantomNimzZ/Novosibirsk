@@ -1,6 +1,6 @@
 // client/src/utils/routeUtils.js
-// ✅ Single source of truth for route-building logic
-// Previously duplicated in: LiveTracker.jsx, stationUtils.js, and routeUtils.js
+// Route-building utilities
+
 
 import { stationCoordinatesByCity } from "../constants/realStations";
 /**

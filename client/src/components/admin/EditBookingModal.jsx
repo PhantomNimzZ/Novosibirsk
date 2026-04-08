@@ -1,5 +1,6 @@
 // client/src/components/admin/EditBookingModal.jsx
 import { useState, useEffect } from "react";
+import { API_BASE } from "../../api/config";
 
 const EditBookingModal = ({ booking, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -36,6 +37,39 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     }
   }, [booking]);
 
+  // Fetch booked seats for this train/date to populate dropdown
+  const [bookedSeats, setBookedSeats] = useState([]);
+  useEffect(() => {
+    if (!booking?.trainId || !booking?.date || booking.seat === "General Seating") return;
+    const fetchSeats = async () => {
+      try {
+        const dateStr = new Date(booking.date).toISOString().split("T")[0];
+        const response = await fetch(
+          `${API_BASE}/api/trains/${booking.trainId}/seats?date=${dateStr}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          // Exclude this booking's current seat from "booked" list
+          setBookedSeats(data.bookedSeats.filter((s) => s !== booking.seat));
+        }
+      } catch (error) {
+        console.error("Error fetching seats:", error);
+      }
+    };
+    fetchSeats();
+  }, [booking]);
+
+  // Generate seat options (rows 1-15, columns A-D)
+  const generateSeatOptions = () => {
+    const seats = [];
+    for (let row = 1; row <= 15; row++) {
+      for (const col of ["A", "B", "C", "D"]) {
+        seats.push(`${row}${col}`);
+      }
+    }
+    return seats;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -47,11 +81,11 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // ✅ ISSUE 5 FIX: Check if new seat is available (if seat changed)
+    // Check if new seat is available (if seat changed)
     if (formData.seat !== booking.seat && formData.seat && formData.seat !== "General Seating") {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE || 'http://localhost:3001'}/api/trains/${booking.trainId}/seats/${formData.seat}/available?date=${formData.date}`
+          `${API_BASE}/api/trains/${booking.trainId}/seats/${formData.seat}/available?date=${formData.date}`
         );
         
         if (response.ok) {
@@ -70,7 +104,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     // Send only editable fields
     const dataToSave = {
       id: booking.id,
-      // ✅ ISSUES 1, 2, 3 FIX: Route, date, time, trainNumber are READ-ONLY (not sent)
+      // Editable fields only
       passengerName: formData.passengerName,
       email: formData.email,
       idNumber: formData.idNumber,
@@ -87,7 +121,6 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
       time: booking.time,
     };
 
-    console.log("🔄 Sending update with data:", dataToSave);
     onSave(dataToSave);
   };
 
@@ -155,7 +188,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
               />
             </div>
 
-            {/* Route Info - READ ONLY (Issues 1, 2 fix) */}
+            {/* Route Info - Read Only */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">
                 🔒 Train & Route Information (Read-only)
@@ -188,20 +221,26 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
                 Seat Number
               </label>
               {booking.seat === "General Seating" ? (
-                // Commuter trains - read-only
                 <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600">
                   General Seating (Commuter Train)
                 </div>
               ) : (
-                // Long-distance trains - editable
-                <input
-                  type="text"
+                <select
                   name="seat"
                   value={formData.seat}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 5A"
-                />
+                >
+                  <option value="">-- Select a seat --</option>
+                  {generateSeatOptions().map((seat) => {
+                    const isBooked = bookedSeats.includes(seat);
+                    return (
+                      <option key={seat} value={seat} disabled={isBooked}>
+                        {seat}{isBooked ? " (booked)" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
               )}
               <p className="text-xs text-gray-500 mt-1">
                 {booking.seat === "General Seating" 
@@ -244,7 +283,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
                 >
                   <option value="Pending">Pending</option>
                   <option value="Paid">Paid</option>
-                  <option value="Pay at Station">Pay at Station</option>
+                  <option value="Refunded">Refunded</option>
                 </select>
               </div>
 

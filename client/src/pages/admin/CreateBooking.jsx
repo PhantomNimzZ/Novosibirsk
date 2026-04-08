@@ -32,9 +32,9 @@ const CreateBooking = () => {
 
       const data = await response.json();
       
-      // ✅ FIX: Filter out Metro Rail trains (only show long-distance)
+      // Filter out Metro Rail trains (only show long-distance)
       const longDistanceTrains = data.filter(train => 
-        !train.train?.includes("Metro Rail")
+        !train.trainName?.includes("Metro Rail")
       );
       
       setTrains(longDistanceTrains);
@@ -135,7 +135,7 @@ const CreateBooking = () => {
               <option value="">-- Select a train --</option>
               {trains.map((train) => (
                 <option key={train.id} value={train.id}>
-                  {train.train} ({train.trainNumber}) - {train.from} → {train.to} at{" "}
+                  {train.trainName} ({train.trainNumber}) - {train.from} → {train.to} at{" "}
                   {train.time} - R{train.price}
                 </option>
               ))}
@@ -258,7 +258,7 @@ const CreateBooking = () => {
               >
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
-                <option value="Pay at Station">Pay at Station</option>
+                <option value="Failed">Failed</option>
               </select>
             </div>
           </div>

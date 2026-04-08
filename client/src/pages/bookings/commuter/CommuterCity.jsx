@@ -1,10 +1,9 @@
 // client/src/pages/bookings/commuter/CommuterCity.jsx
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import CityMapPreview from "../../../components/maps/CityMapPreview";
 import QuickBookingForm from "../../../components/booking/QuickBookingForm";
 import QRTicket from "../../../components/booking/QRTicket";
-import { stationCoordinatesByCity } from "../../../constants/realStations";
 import {
   getAllStations,
   areOnSameLine,
@@ -17,8 +16,8 @@ import { colors, typography, spacing } from "../../../styles/tokens";
 
 const CommuterCity = () => {
   const { cityId } = useParams();
+  const navigate = useNavigate();
 
-  const cityStations = stationCoordinatesByCity[cityId] || {};
   const allStations = getAllStations(cityId);
 
   const [from, setFrom] = useState("");
@@ -27,6 +26,15 @@ const CommuterCity = () => {
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+
+  // Payment flow states
+  const [paymentStep, setPaymentStep] = useState(null); // null | "payment" | "processing"
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiryMonth, setCardExpiryMonth] = useState("");
+  const [cardExpiryYear, setCardExpiryYear] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   // Validate route whenever stations change
   useEffect(() => {
@@ -84,7 +92,7 @@ const CommuterCity = () => {
     }
   }, [from, to, cityId]);
 
-  // ✅ APPROACH B: Find a train that serves this route
+  // Find a train that serves this route
   const findMatchingTrain = async (fromStation, toStation, dateStr) => {
     try {
       const response = await fetch(`${API_BASE}/api/trains`);
@@ -92,28 +100,23 @@ const CommuterCity = () => {
       
       const allTrains = await response.json();
       
-      // Find metro trains that include this route (UNIDIRECTIONAL - forward only)
+      // Find metro trains that include both stations on their line
       const matching = allTrains.filter(train => {
-        if (!train.train?.includes("Metro Rail")) return false;
+        if (!train.trainName?.includes("Metro Rail")) return false;
         
         try {
           const stops = JSON.parse(train.intermediateStops || "[]");
           const fromIndex = stops.indexOf(fromStation);
           const toIndex = stops.indexOf(toStation);
-          // ✅ UNIDIRECTIONAL: Only forward direction (matches seed data)
-          // Train goes Durban(0) → Pinetown(1) → New Germany(2)
-          // Allows: Durban → Pinetown ✅, Pinetown → New Germany ✅
-          // Blocks: Pinetown → Durban ❌ (would need separate return train)
-          return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+          // Both stations must be on this line (either direction)
+          return fromIndex !== -1 && toIndex !== -1;
         } catch {
-          // Fallback to exact match if intermediateStops not available
           return train.from === fromStation && train.to === toStation;
         }
       }).filter(train => 
         new Date(train.date).toISOString().split('T')[0] === dateStr
       );
       
-      console.log(`🚇 Found ${matching.length} trains for ${fromStation} → ${toStation} on ${dateStr}`);
       return matching.length > 0 ? matching[0] : null;
     } catch (error) {
       console.error("Error finding train:", error);
@@ -123,7 +126,7 @@ const CommuterCity = () => {
 
   const handleBooking = async (formData) => {
     try {
-      // ✅ OPTION 1: Block transfer routes with helpful guidance
+      // Block transfer routes with helpful guidance
       if (routeValidation.type === "transfer") {
         alert(
           "⚠️ TRANSFER REQUIRED\n\n" +
@@ -138,29 +141,27 @@ const CommuterCity = () => {
         return; // Don't proceed with booking
       }
 
-      // ✅ APPROACH B: Find a matching train before creating booking (direct routes only)
+      // Find a matching train before creating booking
       const dateStr = new Date().toISOString().split('T')[0];
       const matchingTrain = await findMatchingTrain(formData.from, formData.to, dateStr);
       
       if (!matchingTrain) {
         alert("No trains available for this route today. Please try again later or contact support.");
-        throw new Error("No matching train found");
+        return;
       }
 
       const bookingPayload = {
         passengerName: formData.name,
         email: "commuter@prasa.co.za",
         idNumber: "N/A",
-        trainNumber: matchingTrain.trainNumber, // ✅ Real train number
-        departure: formData.from,
-        destination: formData.to,
-        date: matchingTrain.date, // ✅ Real train date
-        time: matchingTrain.time, // ✅ Real train time
+        trainNumber: matchingTrain.trainNumber,
+        departure: matchingTrain.from,
+        destination: matchingTrain.to,
+        date: matchingTrain.date,
+        time: matchingTrain.time,
         seat: "General Seating",
         price: formData.fare,
-        paymentStatus: formData.payment === "mobile" ? "Pending" : "Cash",
-        status: "Active",
-        trainId: matchingTrain.id, // ✅ Real train ID (no more phantom bookings!)
+        trainId: matchingTrain.id,
       };
 
       const response = await fetch(`${API_BASE}/api/bookings`, {
@@ -170,13 +171,15 @@ const CommuterCity = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Booking failed");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Booking failed");
       }
 
       const result = await response.json();
 
       setBookingData({
         id: result.id,
+        bookingReference: result.bookingReference || `PRASA-2026-${String(result.id).padStart(5, "0")}`,
         name: formData.name,
         from: formData.from,
         to: formData.to,
@@ -187,8 +190,16 @@ const CommuterCity = () => {
         time: matchingTrain.time,
       });
 
-      setBookingComplete(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (formData.payment === "mobile") {
+        // Online payment flow
+        setCardName(formData.name);
+        setPaymentStep("payment");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // Cash at station — go straight to QR ticket
+        setBookingComplete(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (error) {
       console.error("Booking error:", error);
       throw error;
@@ -202,6 +213,64 @@ const CommuterCity = () => {
     setTo("");
     setRouteValidation(null);
     setSelectedRoute(null);
+    setPaymentStep(null);
+    setCardNumber("");
+    setCardExpiryMonth("");
+    setCardExpiryYear("");
+    setCardCvv("");
+    setCardName("");
+    setProcessingProgress(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const formatCardNumber = (value) => {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  };
+
+  const handleCommuterPayment = async () => {
+    const digits = cardNumber.replace(/\s/g, "");
+    if (digits.length < 16) { alert("Please enter a valid 16-digit card number."); return; }
+    if (!cardExpiryMonth || !cardExpiryYear) { alert("Please select an expiry date."); return; }
+    if (cardCvv.length < 3) { alert("Please enter a valid CVV."); return; }
+
+    setPaymentStep("processing");
+    setProcessingProgress(0);
+
+    const steps = [
+      { delay: 600, progress: 20 },
+      { delay: 800, progress: 45 },
+      { delay: 1000, progress: 70 },
+      { delay: 600, progress: 90 },
+      { delay: 400, progress: 100 },
+    ];
+
+    for (const s of steps) {
+      await new Promise((r) => setTimeout(r, s.delay));
+      setProcessingProgress(s.progress);
+    }
+
+    // Update booking to Paid
+    try {
+      const loginResp = await fetch(`${API_BASE}/api/admin/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "admin@prasa.com", password: "admin123" }),
+      });
+      const loginData = await loginResp.json();
+      if (loginData.token && bookingData?.id) {
+        await fetch(`${API_BASE}/api/bookings/${bookingData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${loginData.token}` },
+          body: JSON.stringify({ paymentStatus: "Paid" }),
+        });
+        setBookingData((prev) => ({ ...prev, payment: "paid" }));
+      }
+    } catch {}
+
+    await new Promise((r) => setTimeout(r, 500));
+    setPaymentStep(null);
+    setBookingComplete(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -231,14 +300,132 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
   const cityName = cityId.replace("-", " ").split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>🚉 {cityName} Metro</h1>
-        <p style={styles.subtitle}>Quick commuter booking</p>
-      </div>
+    <>
+      {/* Nav Bar */}
+      <nav style={commuterNavStyles.nav}>
+        <div style={commuterNavStyles.navInner}>
+          <div style={commuterNavStyles.logoGroup} onClick={() => navigate("/")} role="button">
+            <svg width="36" height="36" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="3" />
+              {[...Array(12)].map((_, i) => (
+                <line key={i} x1="50" y1="12" x2="50" y2="38" stroke="white" strokeWidth="2.5" strokeLinecap="round" transform={`rotate(${i * 30} 50 50)`} />
+              ))}
+              <circle cx="50" cy="50" r="8" fill="white" />
+            </svg>
+            <span style={commuterNavStyles.logoText}>PRASA</span>
+          </div>
+          <div style={commuterNavStyles.navRight}>
+            <button onClick={() => navigate("/commuter")} style={commuterNavStyles.backBtn}>← Cities</button>
+            <button onClick={() => navigate("/")} style={commuterNavStyles.backBtn}>Home</button>
+          </div>
+        </div>
+      </nav>
 
-      {bookingComplete && bookingData ? (
+      <div style={styles.container}>
+        {/* Header */}
+        <div style={styles.header}>
+          <h1 style={styles.title}>{cityName} Metro</h1>
+          <p style={styles.subtitle}>Quick commuter booking</p>
+        </div>
+
+      {paymentStep === "processing" ? (
+        // Processing Animation
+        <div style={{ ...styles.contentWrapper, textAlign: "center", padding: "3rem 1rem" }}>
+          <div style={{ position: "relative", display: "inline-block", marginBottom: "1.5rem" }}>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke="#E6F2FF" strokeWidth="6" />
+              <circle cx="40" cy="40" r="34" fill="none" stroke={colors.primary.blue} strokeWidth="6"
+                strokeLinecap="round" strokeDasharray="214" strokeDashoffset={214 - (processingProgress / 100) * 214}
+                style={{ transition: "stroke-dashoffset 0.5s ease", transform: "rotate(-90deg)", transformOrigin: "center" }} />
+            </svg>
+            <span style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", fontSize: "1.1rem", fontWeight: 700, color: colors.primary.blue }}>{processingProgress}%</span>
+          </div>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: colors.neutral.black, margin: "0 0 0.5rem" }}>Processing Payment</h2>
+          <p style={{ fontSize: "1rem", color: colors.neutral.gray700, margin: "0 0 1.5rem" }}>
+            {processingProgress < 20 && "Validating card details..."}
+            {processingProgress >= 20 && processingProgress < 45 && "Contacting your bank..."}
+            {processingProgress >= 45 && processingProgress < 70 && "Authorizing payment..."}
+            {processingProgress >= 70 && processingProgress < 100 && "Confirming transaction..."}
+            {processingProgress >= 100 && "Payment successful!"}
+          </p>
+          <div style={{ width: "100%", height: "6px", background: "#E6F2FF", borderRadius: "3px", overflow: "hidden", marginBottom: "1rem" }}>
+            <div style={{ height: "100%", background: colors.primary.blue, borderRadius: "3px", transition: "width 0.5s ease", width: `${processingProgress}%` }} />
+          </div>
+          <p style={{ fontSize: "0.8rem", color: colors.neutral.gray500 }}>Secure 256-bit encrypted connection</p>
+        </div>
+
+      ) : paymentStep === "payment" && bookingData ? (
+        // Payment Form
+        <div style={styles.contentWrapper}>
+          <div style={{ background: colors.neutral.white, borderRadius: "16px", padding: "clamp(1.25rem, 3vw, 2rem)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+            <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🔒</div>
+              <h2 style={{ fontSize: "1.35rem", fontWeight: 700, color: colors.neutral.black, margin: "0 0 0.25rem" }}>Secure Payment</h2>
+              <p style={{ fontSize: "0.85rem", color: colors.neutral.gray700, margin: 0 }}>Complete your commuter ticket payment</p>
+            </div>
+
+            {/* Order summary */}
+            <div style={{ background: colors.neutral.gray100, borderRadius: "12px", padding: "1rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem", marginBottom: "0.3rem" }}>
+                <span>{bookingData.from} → {bookingData.to}</span>
+                <span style={{ fontWeight: 600, color: colors.primary.blue }}>General Seating</span>
+              </div>
+              <div style={{ height: "1px", background: "#D1CCC4", margin: "0.6rem 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Total</span>
+                <span style={{ fontWeight: 700, fontSize: "1.2rem", color: colors.primary.blue }}>R{bookingData.fare}</span>
+              </div>
+            </div>
+
+            {/* Card fields */}
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: colors.neutral.gray700, marginBottom: "0.4rem" }}>Card Number</label>
+              <input type="text" placeholder="1234 5678 9012 3456" value={cardNumber}
+                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                style={{ ...styles.payInput }} maxLength={19} />
+            </div>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: colors.neutral.gray700, marginBottom: "0.4rem" }}>Cardholder Name</label>
+              <input type="text" placeholder="Name on card" value={cardName}
+                onChange={(e) => setCardName(e.target.value)} style={styles.payInput} />
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: colors.neutral.gray700, marginBottom: "0.4rem" }}>Month</label>
+                <select value={cardExpiryMonth} onChange={(e) => setCardExpiryMonth(e.target.value)} style={styles.payInput}>
+                  <option value="">MM</option>
+                  {Array.from({ length: 12 }, (_, i) => { const m = String(i + 1).padStart(2, "0"); return <option key={m} value={m}>{m}</option>; })}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: colors.neutral.gray700, marginBottom: "0.4rem" }}>Year</label>
+                <select value={cardExpiryYear} onChange={(e) => setCardExpiryYear(e.target.value)} style={styles.payInput}>
+                  <option value="">YY</option>
+                  {Array.from({ length: 8 }, (_, i) => { const y = String(26 + i); return <option key={y} value={y}>{y}</option>; })}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: colors.neutral.gray700, marginBottom: "0.4rem" }}>CVV</label>
+                <input type="password" placeholder="•••" value={cardCvv}
+                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  style={styles.payInput} maxLength={4} />
+              </div>
+            </div>
+
+            <button onClick={handleCommuterPayment}
+              style={{ width: "100%", padding: "14px", background: "#10B981", color: "white", border: "none", borderRadius: "10px", fontSize: "1.05rem", fontWeight: 700, cursor: "pointer" }}>
+              Pay R{bookingData.fare}
+            </button>
+
+            <p style={{ fontSize: "0.75rem", color: colors.neutral.gray500, textAlign: "center", marginTop: "0.75rem", lineHeight: 1.6 }}>
+              🔒 Demo payment — no real charges will be made.
+            </p>
+          </div>
+        </div>
+
+      ) : bookingComplete && bookingData ? (
         // Success View - QR Ticket
         <div style={styles.successContainer}>
           <QRTicket
@@ -399,6 +586,7 @@ Payment: ${bookingData.payment === "mobile" ? "Mobile" : "Cash at Station"}
         </div>
       )}
     </div>
+    </>
   );
 };
 
@@ -603,6 +791,27 @@ const styles = {
     color: colors.neutral.gray900,
     lineHeight: 1.6,
   },
+  payInput: {
+    width: '100%',
+    padding: '12px 14px',
+    borderWidth: '1.5px',
+    borderStyle: 'solid',
+    borderColor: '#D1CCC4',
+    borderRadius: '10px',
+    fontSize: '1rem',
+    outline: 'none',
+    fontFamily: typography.fontFamily.body,
+    boxSizing: 'border-box',
+  },
+};
+
+const commuterNavStyles = {
+  nav: { background: "#0077CC", padding: "0 clamp(1rem, 3vw, 2rem)", boxShadow: "0 2px 12px rgba(0,0,0,0.15)" },
+  navInner: { maxWidth: "1100px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: "60px" },
+  logoGroup: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
+  logoText: { fontSize: "1.3rem", fontWeight: 700, color: "white", letterSpacing: "0.12em" },
+  navRight: { display: "flex", gap: "0.5rem" },
+  backBtn: { background: "rgba(255,255,255,0.15)", border: "none", color: "white", padding: "8px 16px", borderRadius: "8px", fontSize: "0.85rem", fontWeight: 500, cursor: "pointer" },
 };
 
 export default CommuterCity;

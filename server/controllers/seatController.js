@@ -1,66 +1,37 @@
 // server/controllers/seatController.js
 import prisma from "../lib/prisma.js";
 
+const safeInt = (v) => {
+  const n = parseInt(v);
+  return isNaN(n) ? null : n;
+};
+
 /**
  * Get booked seats for a specific train and date
  * GET /api/trains/:trainId/seats?date=YYYY-MM-DD
  */
 export const getBookedSeats = async (req, res) => {
   try {
-    const { trainId } = req.params;
+    const trainId = safeInt(req.params.trainId);
+    if (trainId === null) return res.status(400).json({ error: "Invalid train ID" });
+
     const { date } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required (YYYY-MM-DD)" });
 
-    if (!trainId) {
-      return res.status(400).json({ error: "Train ID is required" });
-    }
-
-    if (!date) {
-      return res.status(400).json({ error: "Date is required" });
-    }
-
-    console.log(`🔍 Fetching booked seats for train ${trainId} on ${date}`);
-
-    // Get all bookings for this train and date
-    // Note: Database stores dates as ISO strings, so we need to compare just the date part
     const bookings = await prisma.booking.findMany({
-      where: {
-        trainId: parseInt(trainId),
-        status: {
-          not: "Cancelled", // Exclude cancelled bookings
-        },
-      },
-      select: {
-        seat: true,
-        passengerName: true,
-        status: true,
-        date: true,
-      },
+      where: { trainId, date, status: { not: "Cancelled" } },
+      select: { seat: true },
     });
-
-    // Filter by date (comparing just YYYY-MM-DD part)
-    const filteredBookings = bookings.filter(booking => {
-      const bookingDate = new Date(booking.date).toISOString().split('T')[0];
-      return bookingDate === date;
-    });
-
-    // Extract just the seat numbers
-    const bookedSeats = filteredBookings.map(b => b.seat);
-
-    console.log(`✅ Found ${bookedSeats.length} booked seats:`, bookedSeats);
 
     res.json({
-      trainId: parseInt(trainId),
+      trainId,
       date,
-      bookedSeats,
-      count: bookedSeats.length,
+      bookedSeats: bookings.map((b) => b.seat),
+      count: bookings.length,
     });
-
   } catch (error) {
-    console.error("❌ Get booked seats error:", error);
-    res.status(500).json({ 
-      error: "Failed to fetch booked seats",
-      message: error.message 
-    });
+    console.error("Get booked seats error:", error);
+    res.status(500).json({ error: "Failed to fetch booked seats" });
   }
 };
 
@@ -70,54 +41,28 @@ export const getBookedSeats = async (req, res) => {
  */
 export const checkSeatAvailability = async (req, res) => {
   try {
-    const { trainId, seatNumber } = req.params;
+    const trainId = safeInt(req.params.trainId);
+    if (trainId === null) return res.status(400).json({ error: "Invalid train ID" });
+
+    const { seatNumber } = req.params;
     const { date } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required (YYYY-MM-DD)" });
 
-    if (!date) {
-      return res.status(400).json({ error: "Date is required" });
-    }
-
-    console.log(`🔍 Checking if seat ${seatNumber} is available on train ${trainId} for ${date}`);
-
-    // Check if seat is already booked (comparing date part only)
-    const allBookings = await prisma.booking.findMany({
-      where: {
-        trainId: parseInt(trainId),
-        seat: seatNumber,
-        status: {
-          not: "Cancelled",
-        },
-      },
-      select: {
-        date: true,
-        passengerName: true,
-      },
+    const existing = await prisma.booking.findFirst({
+      where: { trainId, seat: seatNumber, date, status: { not: "Cancelled" } },
+      select: { passengerName: true },
     });
-
-    // Filter by date
-    const existingBooking = allBookings.find(booking => {
-      const bookingDate = new Date(booking.date).toISOString().split('T')[0];
-      return bookingDate === date;
-    });
-
-    const isAvailable = !existingBooking;
-
-    console.log(`${isAvailable ? "✅" : "❌"} Seat ${seatNumber} is ${isAvailable ? "available" : "booked"}`);
 
     res.json({
-      trainId: parseInt(trainId),
+      trainId,
       seatNumber,
       date,
-      available: isAvailable,
-      bookedBy: existingBooking ? existingBooking.passengerName : null,
+      available: !existing,
+      bookedBy: existing?.passengerName || null,
     });
-
   } catch (error) {
-    console.error("❌ Check seat availability error:", error);
-    res.status(500).json({ 
-      error: "Failed to check seat availability",
-      message: error.message 
-    });
+    console.error("Check seat availability error:", error);
+    res.status(500).json({ error: "Failed to check seat availability" });
   }
 };
 
@@ -127,37 +72,33 @@ export const checkSeatAvailability = async (req, res) => {
  */
 export const getSeatStats = async (req, res) => {
   try {
-    const { trainId } = req.params;
+    const trainId = safeInt(req.params.trainId);
+    if (trainId === null) return res.status(400).json({ error: "Invalid train ID" });
+
     const { date } = req.query;
 
-    // Get train info
     const train = await prisma.train.findUnique({
-      where: { id: parseInt(trainId) },
-      select: { seats: true, train: true, trainNumber: true },
+      where: { id: trainId },
+      select: { seats: true, trainName: true, trainNumber: true },
     });
 
-    if (!train) {
-      return res.status(404).json({ error: "Train not found" });
-    }
+    if (!train) return res.status(404).json({ error: "Train not found" });
 
-    // Get booked seats count
     const bookedCount = await prisma.booking.count({
       where: {
-        trainId: parseInt(trainId),
-        date: date || undefined,
-        status: {
-          not: "Cancelled",
-        },
+        trainId,
+        ...(date ? { date } : {}),
+        status: { not: "Cancelled" },
       },
     });
 
     const totalSeats = train.seats;
     const availableSeats = totalSeats - bookedCount;
-    const occupancyRate = (bookedCount / totalSeats) * 100;
+    const occupancyRate = totalSeats > 0 ? (bookedCount / totalSeats) * 100 : 0;
 
     res.json({
-      trainId: parseInt(trainId),
-      trainName: train.train,
+      trainId,
+      trainName: train.trainName,
       trainNumber: train.trainNumber,
       date: date || "all dates",
       totalSeats,
@@ -165,18 +106,10 @@ export const getSeatStats = async (req, res) => {
       availableSeats,
       occupancyRate: Math.round(occupancyRate),
     });
-
   } catch (error) {
-    console.error("❌ Get seat stats error:", error);
-    res.status(500).json({ 
-      error: "Failed to fetch seat statistics",
-      message: error.message 
-    });
+    console.error("Get seat stats error:", error);
+    res.status(500).json({ error: "Failed to fetch seat statistics" });
   }
 };
 
-export default {
-  getBookedSeats,
-  checkSeatAvailability,
-  getSeatStats,
-};
+export default { getBookedSeats, checkSeatAvailability, getSeatStats };

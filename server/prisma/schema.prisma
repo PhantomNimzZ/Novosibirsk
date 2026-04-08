@@ -13,34 +13,41 @@ model Booking {
   passengerName  String
   email          String
   idNumber       String
-  trainNumber    String
-  departure      String
-  destination    String
+  trainNumber    String   // Snapshot at booking time (denormalized intentionally)
+  departure      String   // Snapshot at booking time
+  destination    String   // Snapshot at booking time
   date           String
   time           String
   seat           String
-  price          Float
-  paymentStatus  String
-  status         String
+  price          Float    // Snapshot at booking time — frozen at purchase price
+  paymentStatus  String   // Validated: Pending | Paid | Refunded | Failed
+  status         String   // Validated: Active | Cancelled | Completed
   createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   trainId        Int
-  train          Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  train          Train    @relation(fields: [trainId], references: [id], onDelete: Restrict)
+  // onDelete: Restrict — prevents accidental deletion of trains that have bookings
+  // Admin must cancel/archive all bookings first before removing a train
+
+  // NOTE: @@unique([trainId, seat, date]) is not used because "General Seating"
+  // allows multiple passengers per seat value. Uniqueness is enforced in
+  // application code via a Prisma transaction (see bookings.js POST handler).
 }
 
 model Train {
   id                 Int       @id @default(autoincrement())
-  train              String    // Train name (e.g., "Shosholoza Meyl", "Blue Train")
-  trainNumber        String    // Unique train number (e.g., "SM-001-1")
+  trainName          String    // Human-readable name (e.g. "Shosholoza Meyl")
+  trainNumber        String    // Display label (e.g. "SM-001-1"), not globally unique
   from               String
   to                 String
   time               String
   date               String
   price              Float
-  seats              Int       // Total seats available
-  class              String?   // Economy, Business, Luxury
-  amenities          String?   // Comma-separated list
-  distance           Int?      // Distance in km
-  duration           Int?      // Duration in hours
-  intermediateStops  String?   // JSON string of stops
+  seats              Int
+  class              String?
+  amenities          String?
+  distance           Int?
+  duration           Int?
+  intermediateStops  String?   // JSON string of stops array
   bookings           Booking[]
 }

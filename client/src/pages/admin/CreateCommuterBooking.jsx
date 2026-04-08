@@ -61,27 +61,23 @@ const CreateCommuterBooking = () => {
 
       const allTrains = await response.json();
       
-      // ✅ APPROACH B: Find trains where route is in forward direction (UNIDIRECTIONAL)
+      // Find trains that serve both stations on their line
       const matching = allTrains.filter(train => {
-        if (!train.train?.includes("Metro Rail")) return false;
+        if (!train.trainName?.includes("Metro Rail")) return false;
         
-        // Check if this train serves both stations in forward direction
         try {
           const stops = JSON.parse(train.intermediateStops || "[]");
           const fromIndex = stops.indexOf(fromStation);
           const toIndex = stops.indexOf(toStation);
-          
-          // ✅ UNIDIRECTIONAL: Only forward direction (matches seed data)
-          return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
+          // Both stations must be on this line (either direction)
+          return fromIndex !== -1 && toIndex !== -1;
         } catch (error) {
-          // Fallback to exact match if intermediateStops not available
           return train.from === fromStation && train.to === toStation;
         }
       }).filter(train => 
         new Date(train.date).toISOString().split('T')[0] === selectedDate
       );
 
-      console.log(`Found ${matching.length} trains that serve ${fromStation} → ${toStation} on ${selectedDate}`);
       
       setAvailableTrains(matching);
       if (matching.length > 0) {
@@ -143,7 +139,6 @@ const CreateCommuterBooking = () => {
         seat: "General Seating", // Always general seating for commuter
         price: selectedTrain.price,
         paymentStatus: formData.paymentStatus,
-        status: "Active",
         trainId: selectedTrain.id,
       };
 
@@ -291,7 +286,7 @@ const CreateCommuterBooking = () => {
               {selectedTrain && (
                 <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-semibold text-blue-900 mb-2">
-                    ✅ Trains Available on {selectedDate}
+                    Trains Available on {selectedDate}
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
@@ -323,7 +318,7 @@ const CreateCommuterBooking = () => {
                 <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
                   <p className="text-yellow-800 font-medium">No trains available for this route and date</p>
                   <p className="text-sm text-yellow-600 mt-1">
-                    Try selecting a different date (March 10-16, 2026)
+                    Try selecting a different date
                   </p>
                 </div>
               )}
@@ -398,7 +393,7 @@ const CreateCommuterBooking = () => {
                     >
                       <option value="Pending">Pending</option>
                       <option value="Paid">Paid</option>
-                      <option value="Pay at Station">Pay at Station</option>
+                      <option value="Failed">Failed</option>
                     </select>
                   </div>
                 </div>

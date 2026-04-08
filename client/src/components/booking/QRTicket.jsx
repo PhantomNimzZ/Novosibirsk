@@ -42,7 +42,7 @@ const QRTicket = ({ booking, onBookAnother, onDownload }) => {
             <rect x="150" y="10" width="40" height="40" fill="black" />
             <rect x="10" y="150" width="40" height="40" fill="black" />
             
-            {/* Random pattern (mock) */}
+            {/* Deterministic pattern based on booking ID */}
             {Array.from({ length: 20 }).map((_, i) => (
               <rect
                 key={i}
@@ -50,11 +50,10 @@ const QRTicket = ({ booking, onBookAnother, onDownload }) => {
                 y={60 + Math.floor(i / 10) * 15}
                 width="10"
                 height="10"
-                fill={Math.random() > 0.5 ? "black" : "white"}
+                fill={((booking.id || 0) * 7 + i * 13) % 3 !== 0 ? "black" : "white"}
               />
             ))}
             
-            {/* More mock pattern */}
             {Array.from({ length: 20 }).map((_, i) => (
               <rect
                 key={`b${i}`}
@@ -62,7 +61,7 @@ const QRTicket = ({ booking, onBookAnother, onDownload }) => {
                 y={100 + Math.floor(i / 10) * 15}
                 width="10"
                 height="10"
-                fill={Math.random() > 0.5 ? "black" : "white"}
+                fill={((booking.id || 0) * 11 + i * 17) % 3 !== 0 ? "black" : "white"}
               />
             ))}
           </svg>
